@@ -385,6 +385,31 @@ export class WordPressService {
     }
   }
 
+  async expandPostContent(postId: number, additionalContent: string): Promise<boolean> {
+    try {
+      // Get current post content
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      const currentContent = postResponse.data.content.rendered;
+      const expandedContent = currentContent + '\n\n' + additionalContent;
+
+      const response = await axios.post(
+        `${this.baseUrl}/posts/${postId}`,
+        {
+          content: expandedContent
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      return response.status === 200;
+    } catch (error) {
+      console.error('Error expanding post content:', error);
+      return false;
+    }
+  }
+
   async applySEOFix(fix: SEOFix): Promise<{ success: boolean; message: string }> {
     try {
       // If postId is 0 or invalid, get the latest post to apply the fix
@@ -432,6 +457,23 @@ export class WordPressService {
           } catch {
             message = 'Invalid links format';
           }
+          break;
+
+        case 'alt_text':
+          success = await this.updateImageAltText(fix.postId, fix.newValue);
+          message = success ? 'Image alt text updated successfully' : 'Failed to update alt text';
+          break;
+
+        case 'title_optimization':
+          // Optimize long titles by shortening while preserving key information
+          success = await this.updatePostTitle(targetPostId, fix.newValue);
+          message = success ? 'Title optimized successfully' : 'Failed to optimize title';
+          break;
+
+        case 'content_expansion':
+          // Expand thin content with additional relevant information
+          success = await this.expandPostContent(targetPostId, fix.newValue);
+          message = success ? 'Content expanded successfully' : 'Failed to expand content';
           break;
 
         default:

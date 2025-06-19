@@ -312,13 +312,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
-        // For meta description fixes, track by the actual page URL that was fixed
-        const pageUrl = 'https://synviz.com/top-qualities-of-it-software-company/';
+        // Extract page URL from fix context or use default
+        const pageUrl = fix.pageUrl || 'https://synviz.com/top-qualities-of-it-software-company/';
         
         // Mark the specific issue as fixed based on the fix type
-        if (fix.type === 'meta_description') {
-          await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
-          console.log(`✓ Marked "Missing Meta Description" as fixed for ${pageUrl}`);
+        switch (fix.type) {
+          case 'meta_description':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
+            console.log(`✓ Marked "Missing Meta Description" as fixed for ${pageUrl}`);
+            break;
+          case 'title_tag':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Title Tag', pageUrl);
+            console.log(`✓ Marked "Missing Title Tag" as fixed for ${pageUrl}`);
+            break;
+          case 'title_optimization':
+            await issueTracker.markIssueAsFixed(auditId, 'Long Title Tag', pageUrl);
+            console.log(`✓ Marked "Long Title Tag" as fixed for ${pageUrl}`);
+            break;
+          case 'alt_text':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Alt Text', pageUrl);
+            console.log(`✓ Marked "Missing Alt Text" as fixed for ${pageUrl}`);
+            break;
+          case 'content_expansion':
+            await issueTracker.markIssueAsFixed(auditId, 'Thin Content', pageUrl);
+            console.log(`✓ Marked "Thin Content" as fixed for ${pageUrl}`);
+            break;
+          case 'schema':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Schema Markup', pageUrl);
+            console.log(`✓ Marked "Missing Schema Markup" as fixed for ${pageUrl}`);
+            break;
+          case 'internal_links':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Internal Links', pageUrl);
+            console.log(`✓ Marked "Missing Internal Links" as fixed for ${pageUrl}`);
+            break;
         }
       }
       
