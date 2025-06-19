@@ -294,15 +294,17 @@ export class WordPressService {
 
   async updatePostTitle(postId: number, title: string): Promise<boolean> {
     try {
+      // Use custom plugin endpoint for title optimization
       const response = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/optimize-title`,
         {
-          title: title
+          post_id: postId,
+          optimized_title: title
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.status === 200;
+      return response.data?.success === true;
     } catch (error) {
       console.error('Error updating post title:', error);
       return false;
@@ -337,17 +339,19 @@ export class WordPressService {
     }
   }
 
-  async updateImageAltText(mediaId: number, altText: string): Promise<boolean> {
+  async updateImageAltText(postId: number, altTextUpdates: string): Promise<boolean> {
     try {
+      // Use custom plugin endpoint for alt text updates
       const response = await axios.post(
-        `${this.baseUrl}/media/${mediaId}`,
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/update-alt-text`,
         {
-          alt_text: altText
+          post_id: postId,
+          image_updates: JSON.parse(altTextUpdates)
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.status === 200;
+      return response.data?.success === true;
     } catch (error) {
       console.error('Error updating image alt text:', error);
       return false;
@@ -387,23 +391,17 @@ export class WordPressService {
 
   async expandPostContent(postId: number, additionalContent: string): Promise<boolean> {
     try {
-      // Get current post content
-      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
-        headers: this.getAuthHeaders()
-      });
-
-      const currentContent = postResponse.data.content.rendered;
-      const expandedContent = currentContent + '\n\n' + additionalContent;
-
+      // Use custom plugin endpoint for content expansion
       const response = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/expand-content`,
         {
-          content: expandedContent
+          post_id: postId,
+          additional_content: additionalContent
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.status === 200;
+      return response.data?.success === true;
     } catch (error) {
       console.error('Error expanding post content:', error);
       return false;
@@ -412,6 +410,8 @@ export class WordPressService {
 
   async applySEOFix(fix: SEOFix): Promise<{ success: boolean; message: string }> {
     try {
+      console.log('Applying SEO fix:', fix.type, 'for post ID:', fix.postId);
+      
       // If postId is 0 or invalid, get the latest post to apply the fix
       let targetPostId = fix.postId;
       if (targetPostId === 0 || !targetPostId) {
