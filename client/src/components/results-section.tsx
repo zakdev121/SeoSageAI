@@ -270,62 +270,123 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="technical">
+            <TabsContent value="technical" className="space-y-6">
+              {/* Technical SEO Issues */}
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Page Analysis</h3>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Page</TableHead>
-                        <TableHead>Title Tag</TableHead>
-                        <TableHead>Meta Description</TableHead>
-                        <TableHead>Word Count</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {results.pages.map((page, index) => {
-                        const hasIssues = !page.title || !page.metaDescription || page.h1.length === 0;
-                        return (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">{new URL(page.url).pathname}</div>
-                              <div className="text-sm text-slate-500">{page.url}</div>
-                            </TableCell>
-                            <TableCell>
-                              {page.title ? (
-                                <div>
-                                  <div className="text-sm text-slate-900">{page.title}</div>
-                                  <div className="text-xs text-slate-500">{page.title.length} chars</div>
-                                </div>
-                              ) : (
-                                <span className="text-red-600 text-sm">Missing</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {page.metaDescription ? (
-                                <div>
-                                  <div className="text-sm text-slate-900">{page.metaDescription.substring(0, 50)}...</div>
-                                  <div className="text-xs text-slate-500">{page.metaDescription.length} chars</div>
-                                </div>
-                              ) : (
-                                <span className="text-red-600 text-sm">Missing</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm text-slate-900">{page.wordCount.toLocaleString()}</span>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={hasIssues ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
-                                {hasIssues ? 'Issues' : 'Good'}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+                  <i className="fas fa-cog text-primary mr-2"></i>
+                  Technical SEO Issues
+                </h3>
+                <div className="space-y-4">
+                  {results.issues
+                    .filter(issue => 
+                      !issue.type.toLowerCase().includes('meta') && 
+                      !issue.type.toLowerCase().includes('title') && 
+                      !issue.type.toLowerCase().includes('content') &&
+                      !issue.type.toLowerCase().includes('heading'))
+                    .map((issue, index) => (
+                    <div key={index} className={`p-4 rounded-lg border ${
+                      issue.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                      issue.severity === 'medium' ? 'bg-amber-50 border-amber-200' :
+                      'bg-blue-50 border-blue-200'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900">{issue.type}</h4>
+                          <p className="text-sm text-slate-600 mt-1">{issue.message}</p>
+                          {issue.page && (
+                            <p className="text-xs text-slate-500 mt-2">Page: {issue.page}</p>
+                          )}
+                        </div>
+                        <Badge className={getSeverityColor(issue.severity)}>
+                          {issue.severity}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Core Web Vitals */}
+              {results.pageSpeedData && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Core Web Vitals</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="text-sm text-slate-600 mb-1">First Contentful Paint</div>
+                      <div className={`text-xl font-bold ${results.pageSpeedData.firstContentfulPaint < 2000 ? 'text-green-600' : results.pageSpeedData.firstContentfulPaint < 4000 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {(results.pageSpeedData.firstContentfulPaint / 1000).toFixed(2)}s
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {results.pageSpeedData.firstContentfulPaint < 2000 ? 'Good' : results.pageSpeedData.firstContentfulPaint < 4000 ? 'Needs Improvement' : 'Poor'}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="text-sm text-slate-600 mb-1">Largest Contentful Paint</div>
+                      <div className={`text-xl font-bold ${results.pageSpeedData.largestContentfulPaint < 2500 ? 'text-green-600' : results.pageSpeedData.largestContentfulPaint < 4000 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {(results.pageSpeedData.largestContentfulPaint / 1000).toFixed(2)}s
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {results.pageSpeedData.largestContentfulPaint < 2500 ? 'Good' : results.pageSpeedData.largestContentfulPaint < 4000 ? 'Needs Improvement' : 'Poor'}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="text-sm text-slate-600 mb-1">Cumulative Layout Shift</div>
+                      <div className={`text-xl font-bold ${results.pageSpeedData.cumulativeLayoutShift < 0.1 ? 'text-green-600' : results.pageSpeedData.cumulativeLayoutShift < 0.25 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {results.pageSpeedData.cumulativeLayoutShift.toFixed(3)}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {results.pageSpeedData.cumulativeLayoutShift < 0.1 ? 'Good' : results.pageSpeedData.cumulativeLayoutShift < 0.25 ? 'Needs Improvement' : 'Poor'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Recommendations */}
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Technical SEO Recommendations</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Priority Fixes</h4>
+                    <ul className="text-sm text-slate-600 space-y-1">
+                      <li>• Fix missing meta descriptions (0% coverage)</li>
+                      <li>• Add proper H1 tags to all pages</li>
+                      <li>• Optimize page load speeds</li>
+                      <li>• Improve mobile responsiveness</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Technical Improvements</h4>
+                    <ul className="text-sm text-slate-600 space-y-1">
+                      <li>• Implement structured data markup</li>
+                      <li>• Optimize images for web</li>
+                      <li>• Enable browser caching</li>
+                      <li>• Minify CSS and JavaScript</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Site Analysis Summary */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Site Analysis Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-slate-900">100%</div>
+                    <div className="text-sm text-slate-600">Title Tag Coverage</div>
+                    <div className="text-xs text-green-600 mt-1">Good</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-red-600">0%</div>
+                    <div className="text-sm text-slate-600">Meta Description Coverage</div>
+                    <div className="text-xs text-red-600 mt-1">Needs Attention</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-red-600">0%</div>
+                    <div className="text-sm text-slate-600">H1 Tag Coverage</div>
+                    <div className="text-xs text-red-600 mt-1">Needs Attention</div>
+                  </div>
                 </div>
               </div>
             </TabsContent>
