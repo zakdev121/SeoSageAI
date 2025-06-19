@@ -31,13 +31,34 @@ export class GSCService {
     }
     
     try {
+      // First, let's check what sites are available in GSC
+      console.log('Checking available GSC sites...');
+      const sitesResponse = await this.searchConsole.sites.list();
+      console.log('Available GSC sites:', JSON.stringify(sitesResponse.data, null, 2));
+      
+      // Try to find the matching site URL
+      const sites = sitesResponse.data.siteEntry || [];
+      const matchingSite = sites.find(site => 
+        site.siteUrl === siteUrl || 
+        site.siteUrl === siteUrl.replace('https://', 'sc-domain:') ||
+        site.siteUrl === `sc-domain:${siteUrl.replace('https://', '').replace('http://', '')}`
+      );
+      
+      if (!matchingSite) {
+        console.log(`Site ${siteUrl} not found in GSC. Available sites:`, sites.map(s => s.siteUrl));
+        return null;
+      }
+      
+      const gscSiteUrl = matchingSite.siteUrl;
+      console.log(`Using GSC site URL: ${gscSiteUrl}`);
+      
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 90); // Last 90 days
 
       // Get overall performance data
       const performanceResponse = await this.searchConsole.searchanalytics.query({
-        siteUrl,
+        siteUrl: gscSiteUrl,
         requestBody: {
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
@@ -48,7 +69,7 @@ export class GSCService {
 
       // Get page performance data
       const pageResponse = await this.searchConsole.searchanalytics.query({
-        siteUrl,
+        siteUrl: gscSiteUrl,
         requestBody: {
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
@@ -106,12 +127,28 @@ export class GSCService {
     }
     
     try {
+      // Get the correct GSC site URL first
+      const sitesResponse = await this.searchConsole.sites.list();
+      const sites = sitesResponse.data.siteEntry || [];
+      const matchingSite = sites.find((site: any) => 
+        site.siteUrl === siteUrl || 
+        site.siteUrl === siteUrl.replace('https://', 'sc-domain:') ||
+        site.siteUrl === `sc-domain:${siteUrl.replace('https://', '').replace('http://', '')}`
+      );
+      
+      if (!matchingSite) {
+        console.log(`Site ${siteUrl} not found in GSC for opportunity keywords`);
+        return [];
+      }
+      
+      const gscSiteUrl = matchingSite.siteUrl;
+      
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 90);
 
       const response = await this.searchConsole.searchanalytics.query({
-        siteUrl,
+        siteUrl: gscSiteUrl,
         requestBody: {
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
