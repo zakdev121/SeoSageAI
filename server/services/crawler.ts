@@ -162,7 +162,7 @@ export class CrawlerService {
       }
       
       // Wait for suggestions to load
-      await page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Extract suggestions with multiple fallback selectors
       const suggestions = await page.evaluate(() => {
