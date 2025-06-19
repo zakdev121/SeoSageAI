@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
+import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { PageDataType } from '@shared/schema';
-import fetch from 'node-fetch';
 
 export class CrawlerService {
   private browser: puppeteer.Browser | null = null;
@@ -41,7 +41,7 @@ export class CrawlerService {
       console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
-        const pageData = await this.crawlPageHTTP(currentUrl);
+        const pageData = await this.crawlPageRobust(currentUrl);
         results.push(pageData);
 
         // Extract internal links for further crawling
@@ -161,95 +161,115 @@ export class CrawlerService {
     }
   }
 
-  private async crawlPageHTTP(url: string): Promise<PageDataType> {
-    // Ensure URL has protocol
-    if (!url.startsWith('http')) {
-      url = `https://${url}`;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
+  private async crawlPageRobust(url: string): Promise<PageDataType> {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Ensure URL has protocol
+      if (!url.startsWith('http')) {
+        url = `https://${url}`;
       }
 
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // Extract title
-      const title = $('title').text().trim();
-
-      // Extract meta description
-      const metaDescription = $('meta[name="description"]').attr('content') || '';
-
-      // Extract headings
-      const h1 = $('h1').map((_, el) => $(el).text().trim()).get();
-      const h2 = $('h2').map((_, el) => $(el).text().trim()).get();
-
-      // Extract images
-      const images = $('img').map((_, el) => ({
-        src: $(el).attr('src') || '',
-        alt: $(el).attr('alt') || ''
-      })).get();
-
-      // Extract internal links
-      const baseUrl = new URL(url);
-      const internalLinks = $('a[href]').map((_, el) => {
-        const href = $(el).attr('href');
-        if (!href) return null;
-        
-        try {
-          const linkUrl = new URL(href, baseUrl);
-          return linkUrl.hostname === baseUrl.hostname ? linkUrl.href : null;
-        } catch {
-          return null;
-        }
-      }).get().filter(Boolean);
-
-      // Extract external links
-      const externalLinks = $('a[href]').map((_, el) => {
-        const href = $(el).attr('href');
-        if (!href) return null;
-        
-        try {
-          const linkUrl = new URL(href, baseUrl);
-          return linkUrl.hostname !== baseUrl.hostname ? linkUrl.href : null;
-        } catch {
-          return null;
-        }
-      }).get().filter(Boolean);
-
-      // Calculate word count
-      const textContent = $('body').text().replace(/\s+/g, ' ').trim();
-      const wordCount = textContent.split(/\s+/).length;
-
-      return {
-        url,
-        title,
-        metaDescription,
-        h1,
-        h2,
-        wordCount,
-        images,
-        internalLinks,
-        externalLinks,
-        brokenLinks: [] // HTTP fallback doesn't check for broken links
-      };
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
+      // Try Puppeteer first for comprehensive data
+      const html = await this.getHTMLWithPuppeteer(url);
+      return await this.parseHTML(html, url, 'browser');
+    } catch (browserError: any) {
+      console.warn(`[Browser failed] ${browserError.message}`);
+      try {
+        // Fallback to HTTP with axios
+        const { data: html } = await axios.get(url, {
+          timeout: 10000,
+          headers: { 'User-Agent': 'Mozilla/5.0 (SynvizBot)' }
+        });
+        return await this.parseHTML(html, url, 'http');
+      } catch (httpError: any) {
+        throw new Error(`Both browser and HTTP crawling failed: ${httpError.message}`);
+      }
     }
+  }
+
+  private async getHTMLWithPuppeteer(url: string): Promise<string> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium'
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (SynvizBot)');
+    await page.goto(url, { timeout: 15000 });
+    const html = await page.content();
+    await browser.close();
+    return html;
+  }
+
+  private async parseHTML(html: string, url: string, source: 'browser' | 'http'): Promise<PageDataType> {
+    const $ = cheerio.load(html);
+
+    const title = $('title').text().trim();
+    const metaDescription = $('meta[name="description"]').attr('content') || '';
+    
+    const h1 = $('h1').map((_, el) => $(el).text().trim()).get();
+    const h2 = $('h2').map((_, el) => $(el).text().trim()).get();
+    
+    const images = $('img').map((_, el) => ({
+      src: $(el).attr('src') || '',
+      alt: $(el).attr('alt') || ''
+    })).get();
+
+    // Extract internal and external links
+    const baseUrl = new URL(url);
+    const allLinks = $('a[href]').map((_, el) => $(el).attr('href')).get().filter(Boolean);
+    
+    const internalLinks: string[] = [];
+    const externalLinks: string[] = [];
+    const absoluteLinks: string[] = [];
+
+    allLinks.forEach(href => {
+      try {
+        const linkUrl = new URL(href, baseUrl);
+        absoluteLinks.push(linkUrl.href);
+        
+        if (linkUrl.hostname === baseUrl.hostname) {
+          internalLinks.push(linkUrl.href);
+        } else {
+          externalLinks.push(linkUrl.href);
+        }
+      } catch {
+        // Invalid URL, skip
+      }
+    });
+
+    // Check for broken links using HEAD requests
+    const brokenLinks = await this.checkBrokenLinks(absoluteLinks.slice(0, 20)); // Limit to first 20 links
+
+    // Calculate word count
+    const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+    const wordCount = textContent.split(/\s+/).length;
+
+    return {
+      url,
+      title,
+      metaDescription,
+      h1,
+      h2,
+      wordCount,
+      images,
+      internalLinks: [...new Set(internalLinks)],
+      externalLinks: [...new Set(externalLinks)],
+      brokenLinks
+    };
+  }
+
+  private async checkBrokenLinks(urls: string[]): Promise<string[]> {
+    const results = await Promise.all(urls.map(async (link) => {
+      try {
+        const res = await axios.head(link, { timeout: 5000 });
+        return res.status >= 400 ? link : null;
+      } catch {
+        return link;
+      }
+    }));
+
+    return results.filter(Boolean) as string[];
   }
 
   async scrapeGoogleAutosuggest(keyword: string): Promise<string[]> {
