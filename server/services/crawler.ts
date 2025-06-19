@@ -162,26 +162,26 @@ export class CrawlerService {
   }
 
   private async crawlPageRobust(url: string): Promise<PageDataType> {
-    try {
-      // Ensure URL has protocol
-      if (!url.startsWith('http')) {
-        url = `https://${url}`;
-      }
+    // Ensure URL has protocol
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
 
-      // Try Puppeteer first for comprehensive data
-      const html = await this.getHTMLWithPuppeteer(url);
-      return await this.parseHTML(html, url, 'browser');
-    } catch (browserError: any) {
-      console.warn(`[Browser failed] ${browserError.message}`);
+    // Try HTTP first for faster results
+    try {
+      const { data: html } = await axios.get(url, {
+        timeout: 5000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (SynvizBot)' }
+      });
+      return await this.parseHTML(html, url, 'http');
+    } catch (httpError: any) {
+      console.warn(`[HTTP failed] ${httpError.message}, trying browser...`);
       try {
-        // Fallback to HTTP with axios
-        const { data: html } = await axios.get(url, {
-          timeout: 10000,
-          headers: { 'User-Agent': 'Mozilla/5.0 (SynvizBot)' }
-        });
-        return await this.parseHTML(html, url, 'http');
-      } catch (httpError: any) {
-        throw new Error(`Both browser and HTTP crawling failed: ${httpError.message}`);
+        // Fallback to Puppeteer for dynamic content
+        const html = await this.getHTMLWithPuppeteer(url);
+        return await this.parseHTML(html, url, 'browser');
+      } catch (browserError: any) {
+        throw new Error(`Both HTTP and browser crawling failed: ${httpError.message}`);
       }
     }
   }
@@ -195,7 +195,7 @@ export class CrawlerService {
 
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (SynvizBot)');
-    await page.goto(url, { timeout: 15000 });
+    await page.goto(url, { timeout: 8000 }); // Reduced timeout
     const html = await page.content();
     await browser.close();
     return html;
