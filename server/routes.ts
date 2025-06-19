@@ -7,7 +7,7 @@ import { GSCService } from "./services/gsc";
 import { KeywordService } from "./services/keywords";
 import { AIService } from "./services/ai";
 import { ReportService } from "./services/report";
-import { EmailService } from "./services/email";
+// import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Start SEO audit
@@ -83,17 +83,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Audit or results not found' });
       }
 
-      const reportService = new ReportService();
-      const emailService = new EmailService();
-      
-      const pdfBuffer = await reportService.generatePDFReport(audit.results);
-      const emailSent = await emailService.sendAuditReport(email, audit.url, pdfBuffer, auditId.toString());
-      
-      if (emailSent) {
-        res.json({ success: true, message: 'Email sent successfully' });
-      } else {
-        res.status(500).json({ error: 'Failed to send email' });
-      }
+      // Email functionality disabled
+      res.status(501).json({ error: 'Email functionality is currently disabled' });
     } catch (error) {
       console.error('Error sending email:', error);
       res.status(500).json({ error: 'Failed to send email' });
@@ -142,7 +133,7 @@ async function processAudit(auditId: number, url: string, industry: string, emai
   const keywordService = new KeywordService();
   const aiService = new AIService();
   const reportService = new ReportService();
-  const emailService = new EmailService();
+  // const emailService = new EmailService(); // Disabled for now
 
   try {
     // Update progress
@@ -201,12 +192,12 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     await storage.completeAudit(auditId, results);
     await storage.updateAuditProgress(auditId, 100);
 
-    // Send email if requested
-    if (email) {
-      console.log(`Sending email report to ${email}`);
-      const pdfBuffer = await reportService.generatePDFReport(results);
-      await emailService.sendAuditReport(email, url, pdfBuffer, auditId.toString());
-    }
+    // Send email if requested (COMMENTED OUT FOR NOW)
+    // if (email) {
+    //   console.log(`Sending email report to ${email}`);
+    //   const pdfBuffer = await reportService.generatePDFReport(results);
+    //   await emailService.sendAuditReport(email, url, pdfBuffer, auditId.toString());
+    // }
 
     console.log(`Audit completed for ${url}`);
   } catch (error) {
