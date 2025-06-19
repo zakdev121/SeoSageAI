@@ -11,6 +11,7 @@ import { PageSpeedService } from "./services/pagespeed";
 import { CustomSearchService } from "./services/customsearch";
 import { IssueResolverService } from "./services/issue-resolver";
 import { BlogWriterService } from "./services/blog-writer";
+import { WordPressService } from "./services/wordpress-api";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -209,6 +210,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         error: error.message || "OpenAI API test failed"
       });
+    }
+  });
+
+  // WordPress API routes for applying SEO fixes
+  app.post("/api/audits/:id/apply-fix", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { fix } = req.body;
+      
+      const audit = await storage.getAudit(auditId);
+      if (!audit) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      const wpService = new WordPressService('https://synviz.com');
+      const result = await wpService.applySEOFix(fix);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error applying SEO fix:', error);
+      res.status(500).json({ error: 'Failed to apply SEO fix' });
+    }
+  });
+
+  app.post("/api/audits/:id/apply-fixes-batch", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { fixes } = req.body;
+      
+      const audit = await storage.getAudit(auditId);
+      if (!audit) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      const wpService = new WordPressService('https://synviz.com');
+      const results = await wpService.batchApplyFixes(fixes);
+      
+      res.json({ results });
+    } catch (error) {
+      console.error('Error applying SEO fixes:', error);
+      res.status(500).json({ error: 'Failed to apply SEO fixes' });
+    }
+  });
+
+  app.get("/api/wordpress/test-connection", async (req, res) => {
+    try {
+      const wpService = new WordPressService('https://synviz.com');
+      const isConnected = await wpService.testConnection();
+      
+      res.json({ 
+        connected: isConnected,
+        message: isConnected ? 'WordPress connection successful' : 'WordPress connection failed'
+      });
+    } catch (error) {
+      console.error('WordPress connection test error:', error);
+      res.status(500).json({ error: 'WordPress connection test failed' });
     }
   });
 

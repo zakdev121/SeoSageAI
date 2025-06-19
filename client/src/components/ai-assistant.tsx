@@ -17,6 +17,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [expandedResolution, setExpandedResolution] = useState<string | null>(null);
   const [generatedBlogPost, setGeneratedBlogPost] = useState<any>(null);
+  const [applyingFix, setApplyingFix] = useState<string | null>(null);
 
   // Fetch AI-generated issue resolutions
   const { data: resolutions, isLoading: resolutionsLoading } = useQuery({
@@ -46,6 +47,27 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     },
     onSuccess: (data) => {
       setGeneratedBlogPost(data.blogPost);
+    }
+  });
+
+  // Apply SEO fix mutation
+  const applyFixMutation = useMutation({
+    mutationFn: async (fix: any) => {
+      const response = await apiRequest("POST", `/api/audits/${auditId}/apply-fix`, { fix });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setApplyingFix(null);
+      if (data.success) {
+        // Success feedback could be added here (toast notification)
+        console.log('Fix applied successfully:', data.message);
+      } else {
+        console.error('Fix failed:', data.message);
+      }
+    },
+    onError: (error) => {
+      setApplyingFix(null);
+      console.error('Error applying fix:', error);
     }
   });
 
@@ -322,7 +344,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   );
 }
 
-function ResolutionCard({ resolution, isExpanded, onToggle }: any) {
+function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplying }: any) {
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
@@ -383,6 +405,36 @@ function ResolutionCard({ resolution, isExpanded, onToggle }: any) {
             </div>
           </div>
         )}
+
+        {/* Apply Fix Button */}
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Ready to apply this fix to your WordPress site?
+            </div>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onApplyFix && onApplyFix(resolution);
+              }}
+              disabled={isApplying}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isApplying ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3 w-3 mr-1" />
+                  Apply Fix
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
