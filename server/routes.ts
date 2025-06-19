@@ -352,22 +352,43 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     const fullUrl = url.includes('://') ? url : `https://${url}`;
     const domainUrl = url.replace(/^https?:\/\//, '');
 
-    // 1. Crawl website (COMMENTED OUT FOR TESTING - FOCUS ON GSC/API DATA)
-    console.log(`Skipping direct crawling - focusing on GSC and API analysis for ${fullUrl}`);
+    // 1. Content Analysis - WordPress API vs Traditional Crawling
     let pages: any[] = [];
+    let contentSource = 'GSC + External APIs';
     
-    // // Attempt full crawling with timeout for problematic domains
-    // try {
-    //   if (domainUrl.includes('synviz.com')) {
-    //     console.log('Using GSC data for synviz.com analysis - skipping direct crawl due to IP restrictions');
-    //     pages = [];
-    //   } else {
-    //     pages = await crawlerService.crawlWebsite(fullUrl, 25);
-    //   }
-    // } catch (error: any) {
-    //   console.log(`Crawling failed for ${fullUrl}: ${error.message}`);
-    //   pages = [];
-    // }
+    // Check if this is a WordPress site and try API-based analysis first
+    try {
+      const wpService = new WordPressService(fullUrl);
+      const isWordPress = await wpService.testConnection();
+      
+      if (isWordPress) {
+        console.log(`WordPress detected for ${fullUrl} - using REST API for content analysis`);
+        pages = await wpService.getContentAsPageData();
+        contentSource = 'WordPress REST API';
+        console.log(`Successfully fetched ${pages.length} pages via WordPress API`);
+      } else {
+        console.log(`Non-WordPress site detected - attempting traditional crawling for ${fullUrl}`);
+        // Fallback to traditional crawling for non-WordPress sites
+        try {
+          pages = await crawlerService.crawlWebsite(fullUrl, 25);
+          contentSource = 'Web Crawling';
+        } catch (error: any) {
+          console.log(`Crawling failed for ${fullUrl}: ${error.message}`);
+          pages = [];
+        }
+      }
+    } catch (wpError) {
+      console.log(`WordPress API not available for ${fullUrl}, falling back to traditional crawling`);
+      try {
+        pages = await crawlerService.crawlWebsite(fullUrl, 25);
+        contentSource = 'Web Crawling';
+      } catch (error: any) {
+        console.log(`All content analysis methods failed for ${fullUrl}: ${error.message}`);
+        pages = [];
+      }
+    }
+    
+    console.log(`Analyzing ${fullUrl} using ${contentSource} - ${pages.length} pages found`);
     await storage.updateAuditProgress(auditId, 30);
     
     // If crawling failed due to network issues, create analysis from GSC data
