@@ -18,7 +18,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   const [emailAddress, setEmailAddress] = useState("");
 
   const { data: audit, isLoading } = useQuery<Audit>({
-    queryKey: ['/api/audits', auditId],
+    queryKey: [`/api/audits/${auditId}`],
     refetchInterval: (data) => {
       return data?.status === 'completed' ? false : 2000;
     },

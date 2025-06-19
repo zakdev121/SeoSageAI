@@ -18,7 +18,7 @@ export function LoadingState({ auditId }: LoadingStateProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   const { data: audit } = useQuery({
-    queryKey: ['/api/audits', auditId],
+    queryKey: [`/api/audits/${auditId}`],
     refetchInterval: 2000, // Poll every 2 seconds
     enabled: !!auditId
   });
