@@ -45,23 +45,31 @@ export class PageSpeedService {
           params: {
             url: cleanUrl,
             key: this.apiKey,
-            category: ['PERFORMANCE', 'ACCESSIBILITY', 'BEST_PRACTICES', 'SEO'],
+            category: 'PERFORMANCE',
             strategy: 'DESKTOP'
           }
         }
       );
 
       const data = response.data;
+      console.log('PageSpeed API response structure:', JSON.stringify(data, null, 2).substring(0, 500));
+      
       const lighthouseResult = data.lighthouseResult;
+      
+      if (!lighthouseResult || !lighthouseResult.categories) {
+        console.log('Missing lighthouseResult or categories in response');
+        throw new Error('Invalid PageSpeed Insights response structure');
+      }
+      
       const categories = lighthouseResult.categories;
-      const audits = lighthouseResult.audits;
+      const audits = lighthouseResult.audits || {};
 
       return {
         url: cleanUrl,
-        performanceScore: Math.round(categories.performance.score * 100),
-        accessibilityScore: Math.round(categories.accessibility.score * 100),
-        bestPracticesScore: Math.round(categories['best-practices'].score * 100),
-        seoScore: Math.round(categories.seo.score * 100),
+        performanceScore: Math.round((categories.performance?.score || 0) * 100),
+        accessibilityScore: Math.round((categories.accessibility?.score || 0) * 100),
+        bestPracticesScore: Math.round((categories['best-practices']?.score || 0) * 100),
+        seoScore: Math.round((categories.seo?.score || 0) * 100),
         firstContentfulPaint: audits['first-contentful-paint']?.numericValue || 0,
         largestContentfulPaint: audits['largest-contentful-paint']?.numericValue || 0,
         cumulativeLayoutShift: audits['cumulative-layout-shift']?.numericValue || 0,
