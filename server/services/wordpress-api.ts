@@ -217,21 +217,23 @@ export class WordPressService {
     try {
       console.log(`Testing custom plugin meta update for post ${postId}`);
       
-      // Check if custom Synviz endpoints are available
+      // Use the exact endpoint format from your plugin
       try {
         const customUpdateResponse = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/seo-update/${postId}`,
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
           {
-            meta_type: 'metadesc',
-            meta_value: metaDescription
+            post_id: postId,
+            meta_description: metaDescription
           },
           { headers: this.getAuthHeaders() }
         );
         
         console.log(`Custom Synviz endpoint response: ${customUpdateResponse.status}`);
+        console.log(`Response data:`, customUpdateResponse.data);
         return customUpdateResponse.status === 200;
       } catch (customError: any) {
-        console.log(`Custom Synviz endpoint not available: ${customError.response?.status || customError.message}`);
+        console.log(`Custom Synviz endpoint failed: ${customError.response?.status} - ${customError.response?.data?.message || customError.message}`);
+        console.log(`Full error response:`, customError.response?.data);
       }
       
       // Try updating via standard meta endpoint with custom plugin
