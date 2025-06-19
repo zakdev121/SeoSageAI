@@ -17,7 +17,13 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   const { toast } = useToast();
   const [emailAddress, setEmailAddress] = useState("");
 
-  const { data: audit, isLoading } = useAudit(auditId);
+  const { data: audit, isLoading } = useQuery<Audit>({
+    queryKey: ['/api/audits', auditId],
+    refetchInterval: (data) => {
+      return data?.status === 'completed' ? false : 2000;
+    },
+    enabled: !!auditId
+  });
 
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
