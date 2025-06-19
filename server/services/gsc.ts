@@ -5,15 +5,31 @@ export class GSCService {
   private searchConsole: any;
 
   constructor() {
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}'),
-      scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
-    });
+    try {
+      const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+      if (!credentials || credentials === '{}') {
+        console.log('Google Search Console credentials not provided - GSC features will be skipped');
+        this.searchConsole = null;
+        return;
+      }
 
-    this.searchConsole = google.searchconsole({ version: 'v1', auth });
+      const auth = new google.auth.GoogleAuth({
+        credentials: JSON.parse(credentials),
+        scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
+      });
+
+      this.searchConsole = google.searchconsole({ version: 'v1', auth });
+    } catch (error) {
+      console.log('Failed to initialize Google Search Console - GSC features will be skipped');
+      this.searchConsole = null;
+    }
   }
 
   async getSearchConsoleData(siteUrl: string): Promise<GSCDataType | null> {
+    if (!this.searchConsole) {
+      return null;
+    }
+    
     try {
       const endDate = new Date();
       const startDate = new Date();
@@ -85,6 +101,10 @@ export class GSCService {
   }
 
   async getOpportunityKeywords(siteUrl: string): Promise<any[]> {
+    if (!this.searchConsole) {
+      return [];
+    }
+    
     try {
       const endDate = new Date();
       const startDate = new Date();

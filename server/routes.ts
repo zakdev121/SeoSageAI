@@ -190,7 +190,7 @@ async function processAudit(auditId: number, url: string, industry: string, emai
         opportunities: keywordData.opportunities.length
       },
       pages,
-      gscData,
+      gscData: gscData || undefined,
       issues,
       keywordOpportunities: keywordData.opportunities,
       longtailKeywords: keywordData.longtailKeywords,
