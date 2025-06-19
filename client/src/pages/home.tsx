@@ -3,12 +3,41 @@ import { AuditForm } from "@/components/audit-form";
 import { LoadingState } from "@/components/loading-state";
 import { ResultsSection } from "@/components/results-section";
 import { ToastNotifications } from "@/components/toast-notifications";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
+  };
+
+  const testOpenAI = async () => {
+    try {
+      const response = await fetch('/api/test/openai');
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "OpenAI API Test Successful",
+          description: "AI features are working correctly and ready to generate recommendations.",
+        });
+      } else {
+        toast({
+          title: "OpenAI API Test Failed",
+          description: data.error || "Unknown error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Test Failed",
+        description: "Could not connect to test endpoint",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -100,6 +100,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test OpenAI API endpoint
+  app.get("/api/test/openai", async (req, res) => {
+    try {
+      const aiService = new AIService();
+      const testResponse = await aiService.generateMetaDescriptions([{
+        url: "https://example.com",
+        title: "Test Page Title",
+        metaDescription: undefined,
+        h1: ["Main Heading"],
+        h2: ["Secondary Heading"],
+        wordCount: 300,
+        images: [],
+        internalLinks: [],
+        externalLinks: [],
+        brokenLinks: []
+      }]);
+      
+      res.json({ 
+        success: true, 
+        message: "OpenAI API is working correctly",
+        testResult: testResponse
+      });
+    } catch (error) {
+      console.error('OpenAI test error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "OpenAI API test failed"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
