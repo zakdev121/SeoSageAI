@@ -61,8 +61,9 @@ export class WordPressService {
       const allPosts: WordPressPost[] = [];
       let page = 1;
       let hasMore = true;
+      const maxPages = 10; // Safety limit to prevent infinite loops
 
-      while (hasMore) {
+      while (hasMore && page <= maxPages) {
         const response = await axios.get(`${this.baseUrl}/posts`, {
           headers: this.getAuthHeaders(),
           params: {
@@ -73,8 +74,11 @@ export class WordPressService {
         });
 
         const posts = response.data;
+        if (!Array.isArray(posts) || posts.length === 0) {
+          break;
+        }
+        
         allPosts.push(...posts);
-
         hasMore = posts.length === 100;
         page++;
       }
@@ -91,8 +95,9 @@ export class WordPressService {
       const allPages: WordPressPost[] = [];
       let page = 1;
       let hasMore = true;
+      const maxPages = 10; // Safety limit to prevent infinite loops
 
-      while (hasMore) {
+      while (hasMore && page <= maxPages) {
         const response = await axios.get(`${this.baseUrl}/pages`, {
           headers: this.getAuthHeaders(),
           params: {
@@ -103,8 +108,11 @@ export class WordPressService {
         });
 
         const pages = response.data;
+        if (!Array.isArray(pages) || pages.length === 0) {
+          break;
+        }
+        
         allPages.push(...pages);
-
         hasMore = pages.length === 100;
         page++;
       }
