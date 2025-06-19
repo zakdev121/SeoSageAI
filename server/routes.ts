@@ -291,19 +291,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/wordpress/page-data", async (req, res) => {
+  app.get("/api/wordpress/content-summary", async (req, res) => {
     try {
       const wpService = new WordPressService('https://synviz.com');
-      const pageData = await wpService.getContentAsPageData();
+      const content = await wpService.getAllContent();
       
-      res.json({
-        totalPages: pageData.length,
-        samplePage: pageData[0] || null,
-        pages: pageData.slice(0, 3) // First 3 pages for testing
-      });
+      const summary = {
+        totalContent: content.totalContent,
+        posts: {
+          count: content.posts.length,
+          sample: content.posts.slice(0, 2).map(post => ({
+            id: post.id,
+            title: post.title?.rendered || 'No title',
+            slug: post.slug,
+            wordCount: post.content?.rendered ? post.content.rendered.replace(/<[^>]*>/g, '').split(' ').length : 0
+          }))
+        },
+        pages: {
+          count: content.pages.length,
+          sample: content.pages.slice(0, 2).map(page => ({
+            id: page.id,
+            title: page.title?.rendered || 'No title',
+            slug: page.slug,
+            wordCount: page.content?.rendered ? page.content.rendered.replace(/<[^>]*>/g, '').split(' ').length : 0
+          }))
+        }
+      };
+      
+      res.json(summary);
     } catch (error) {
-      console.error('WordPress page data error:', error);
-      res.status(500).json({ error: 'Failed to fetch WordPress page data' });
+      console.error('WordPress content summary error:', error);
+      res.status(500).json({ error: 'Failed to fetch WordPress content summary' });
     }
   });
 
