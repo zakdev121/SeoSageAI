@@ -64,7 +64,13 @@ export class AIService {
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
-      return result.recommendations || [];
+      const recommendations = result.recommendations || [];
+      
+      // Ensure content field is always a string
+      return recommendations.map((rec: any) => ({
+        ...rec,
+        content: Array.isArray(rec.content) ? rec.content.join('\n') : rec.content
+      }));
     } catch (error) {
       console.error('Error generating AI recommendations:', error);
       return this.getFallbackRecommendations(pages, opportunities, industry);
