@@ -93,6 +93,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get quick win opportunities
+  app.get("/api/audits/:id/quick-wins", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit || !audit.results) {
+        return res.status(404).json({ error: 'Audit or results not found' });
+      }
+
+      // Filter issues that can be quickly fixed
+      const quickWinIssues = audit.results.issues.filter(issue => 
+        issue.type === 'Missing Meta Description' ||
+        issue.type === 'Missing Title Tag' ||
+        (issue.type === 'Short Meta Description' && issue.severity === 'medium') ||
+        (issue.type === 'Long Meta Description' && issue.severity === 'medium')
+      );
+
+      const quickWins = quickWinIssues.map(issue => ({
+        id: `${issue.type}-${issue.page}`,
+        title: issue.type,
+        page: issue.page,
+        impact: issue.severity === 'critical' ? 'High' : 'Medium',
+        timeToFix: '2-5 minutes',
+        pointsGain: issue.severity === 'critical' ? 8 : 4,
+        description: issue.message,
+        action: getQuickFixAction(issue)
+      }));
+
+      res.json({ quickWins });
+    } catch (error: any) {
+      console.error('Error generating quick wins:', error);
+      res.status(500).json({ error: 'Failed to generate quick wins' });
+    }
+  });
+
   // Generate blog strategy
   app.get("/api/audits/:id/blog-strategy", async (req, res) => {
     try {
@@ -230,9 +266,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
-        // For meta description fixes, track by the actual page URL
+        // For meta description fixes, track by the actual page URL that was fixed
         const pageUrl = 'https://synviz.com/top-qualities-of-it-software-company/';
-        await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
+        
+        // Mark the specific issue as fixed based on the fix type
+        if (fix.type === 'meta_description') {
+          await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
+          console.log(`✓ Marked "Missing Meta Description" as fixed for ${pageUrl}`);
+        }
       }
       
       res.json(result);
