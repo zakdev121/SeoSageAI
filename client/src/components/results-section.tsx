@@ -1,14 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import type { AuditResultsType } from "@shared/schema";
+import type { AuditResultsType, Audit } from "@shared/schema";
 
 interface ResultsSectionProps {
   auditId: number;
@@ -18,14 +17,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   const { toast } = useToast();
   const [emailAddress, setEmailAddress] = useState("");
 
-  const { data: audit, isLoading } = useQuery({
-    queryKey: ['/api/audits', auditId],
-    refetchInterval: (data) => {
-      // Stop polling when completed
-      return data?.status === 'completed' ? false : 2000;
-    },
-    enabled: !!auditId
-  });
+  const { data: audit, isLoading } = useAudit(auditId);
 
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
@@ -79,6 +71,9 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
     }
   });
 
+  // Debug logging
+  console.log('ResultsSection:', { isLoading, audit, auditStatus: audit?.status, hasResults: !!audit?.results });
+  
   if (isLoading || !audit || audit.status !== 'completed' || !audit.results) {
     return null;
   }
