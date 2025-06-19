@@ -37,10 +37,6 @@ export class CrawlerService {
   }
 
   async crawlWebsite(url: string, maxPages: number = 5): Promise<PageDataType[]> {
-    if (!this.browser) {
-      await this.initialize();
-    }
-
     const results: PageDataType[] = [];
     const visited = new Set<string>();
     const toVisit = [url];
@@ -53,21 +49,14 @@ export class CrawlerService {
       console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
-        let pageData: PageDataType;
-        try {
-          // Try Puppeteer first
-          pageData = await this.crawlPage(currentUrl);
-        } catch (puppeteerError) {
-          console.log(`Puppeteer failed for ${currentUrl}, trying HTTP fallback...`);
-          // Fallback to HTTP-based crawling
-          pageData = await this.crawlPageHTTP(currentUrl);
-        }
-        
+        // Use HTTP-based crawling as primary method
+        const pageData = await this.crawlPageHTTP(currentUrl);
         results.push(pageData);
 
         // Extract internal links for further crawling (limit to prevent infinite loops)
         const baseUrl = new URL(url);
-        pageData.internalLinks.slice(0, 10).forEach(link => {
+        const internalLinks = Array.from(new Set(pageData.internalLinks));
+        for (const link of internalLinks.slice(0, 10)) {
           try {
             const linkUrl = new URL(link, baseUrl);
             if (linkUrl.hostname === baseUrl.hostname && !visited.has(linkUrl.href) && toVisit.length < maxPages * 2) {
@@ -76,7 +65,7 @@ export class CrawlerService {
           } catch (e) {
             // Invalid URL, skip
           }
-        });
+        }
       } catch (error) {
         console.error(`Error crawling ${currentUrl}:`, error);
         // Continue with next page instead of failing completely
@@ -168,12 +157,17 @@ export class CrawlerService {
       url = `https://${url}`;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
-      timeout: 15000
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -189,9 +183,8 @@ export class CrawlerService {
     const metaDescription = $('meta[name="description"]').attr('content') || '';
 
     // Extract headings
-    const h1s = $('h1').map((_, el) => $(el).text().trim()).get();
-    const h2s = $('h2').map((_, el) => $(el).text().trim()).get();
-    const h3s = $('h3').map((_, el) => $(el).text().trim()).get();
+    const h1 = $('h1').map((_, el) => $(el).text().trim()).get();
+    const h2 = $('h2').map((_, el) => $(el).text().trim()).get();
 
     // Extract images
     const images = $('img').map((_, el) => ({
@@ -226,22 +219,21 @@ export class CrawlerService {
       }
     }).get().filter(Boolean);
 
-    // Extract text content
+    // Calculate word count
     const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+    const wordCount = textContent.split(/\s+/).length;
 
     return {
       url,
       title,
       metaDescription,
-      h1s,
-      h2s,
-      h3s,
+      h1,
+      h2,
+      wordCount,
       images,
       internalLinks,
       externalLinks,
-      textContent,
-      loadTime: 0, // HTTP fallback doesn't measure load time
-      statusCode: response.status
+      brokenLinks: [] // HTTP fallback doesn't check for broken links
     };
   }
 
