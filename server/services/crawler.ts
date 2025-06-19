@@ -1,7 +1,11 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { PageDataType } from '@shared/schema';
+
+// Use stealth plugin to avoid detection
+puppeteer.use(StealthPlugin());
 
 export class CrawlerService {
   private browser: puppeteer.Browser | null = null;
@@ -167,21 +171,46 @@ export class CrawlerService {
       url = `https://${url}`;
     }
 
-    // Try HTTP first for faster results
+    // Try HTTP first for faster results with retry logic
     try {
-      const { data: html } = await axios.get(url, {
+      const response = await axios.get(url, {
         timeout: 5000,
-        headers: { 'User-Agent': 'Mozilla/5.0 (SynvizBot)' }
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        }
       });
-      return await this.parseHTML(html, url, 'http');
+      
+      // Check for rate limiting
+      if (response.status === 429) {
+        const retryAfter = response.headers['retry-after'];
+        if (retryAfter) {
+          console.warn(`Rate limited, retry after ${retryAfter} seconds`);
+          await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+        }
+      }
+      
+      return await this.parseHTML(response.data, url, 'http');
     } catch (httpError: any) {
-      console.warn(`[HTTP failed] ${httpError.message}, trying browser...`);
+      // Handle specific HTTP errors
+      if (httpError.response?.status === 403) {
+        console.warn(`[HTTP blocked] 403 Forbidden for ${url}, trying stealth browser...`);
+      } else if (httpError.response?.status === 429) {
+        console.warn(`[HTTP rate limited] 429 for ${url}, trying stealth browser...`);
+      } else {
+        console.warn(`[HTTP failed] ${httpError.message}, trying stealth browser...`);
+      }
+      
       try {
-        // Fallback to Puppeteer for dynamic content
+        // Fallback to Puppeteer with stealth mode
         const html = await this.getHTMLWithPuppeteer(url);
         return await this.parseHTML(html, url, 'browser');
       } catch (browserError: any) {
-        throw new Error(`Both HTTP and browser crawling failed: ${httpError.message}`);
+        throw new Error(`Both HTTP and stealth browser crawling failed: ${httpError.message}`);
       }
     }
   }
