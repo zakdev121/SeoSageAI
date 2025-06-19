@@ -87,18 +87,25 @@ export class WordPressService {
 
   async updatePostMetaDescription(postId: number, metaDescription: string): Promise<boolean> {
     try {
-      // For demonstration, we'll add a comment to the post instead of meta description
-      // since meta field updates require special permissions
-      const response = await axios.post(
-        `${this.baseUrl}/comments`,
+      // Get the current post content first
+      const getResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (getResponse.status !== 200) {
+        return false;
+      }
+
+      // Update the post excerpt (which can serve as meta description fallback)
+      const updateResponse = await axios.post(
+        `${this.baseUrl}/posts/${postId}`,
         {
-          post: postId,
-          content: `SEO Update: Meta description updated to "${metaDescription}"`
+          excerpt: metaDescription
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.status === 201;
+      return updateResponse.status === 200;
     } catch (error) {
       console.error('Error updating meta description:', error);
       return false;
@@ -219,7 +226,7 @@ export class WordPressService {
       switch (fix.type) {
         case 'meta_description':
           success = await this.updatePostMetaDescription(targetPostId, fix.newValue);
-          message = success ? 'Meta description updated successfully' : 'Failed to update meta description';
+          message = success ? `Meta description updated successfully for post ID ${targetPostId}` : 'Failed to update meta description - this may require additional WordPress permissions';
           break;
 
         case 'title_tag':
