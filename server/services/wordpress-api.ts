@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { htmlIntegrityService, HTMLIntegrityReport } from './html-integrity';
 
 export interface WordPressPost {
   id: number;
@@ -17,7 +18,7 @@ export interface WordPressPost {
 }
 
 export interface SEOFix {
-  type: 'meta_description' | 'title_tag' | 'alt_text' | 'schema' | 'internal_links';
+  type: 'meta_description' | 'title_tag' | 'alt_text' | 'schema' | 'internal_links' | 'title_optimization' | 'content_expansion';
   postId: number;
   currentValue: string;
   newValue: string;
@@ -233,28 +234,128 @@ export class WordPressService {
     return links;
   }
 
-  async updatePostMetaDescription(postId: number, metaDescription: string): Promise<boolean> {
+  async updatePostMetaDescription(postId: number, metaDescription: string): Promise<{
+    success: boolean;
+    message: string;
+    integrityReport?: any;
+    rollbackPerformed?: boolean;
+  }> {
+    let pageUrl = '';
+    let beforeReport: HTMLIntegrityReport | null = null;
+    
     try {
-      console.log(`Updating meta description for post ${postId}`);
+      // Get the post URL first
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+      pageUrl = postResponse.data.link || postResponse.data.guid?.rendered || `${this.baseUrl.replace('/wp-json/wp/v2', '')}/?p=${postId}`;
       
+      // Check HTML integrity BEFORE making changes
+      console.log(`🔍 Checking HTML integrity before update: ${pageUrl}`);
+      beforeReport = await htmlIntegrityService.checkPageIntegrity(pageUrl);
+      
+      if (!beforeReport.isValid) {
+        return {
+          success: false,
+          message: `Critical page detected: HTML structure is already compromised. Cannot safely update without risking further damage. Errors: ${beforeReport.criticalErrors.join(', ')}`,
+          integrityReport: beforeReport
+        };
+      }
+
+      // Apply the meta description update
+      console.log(`Updating meta description for post ${postId}`);
       const updateResponse = await axios.post(
         `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
         {
           post_id: postId,
-          update: {
-            meta: {
-              "_yoast_wpseo_metadesc": metaDescription
-            }
-          }
+          meta_description: metaDescription
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      if (!updateResponse.data?.success) {
+        return {
+          success: false,
+          message: 'Failed to apply meta description update'
+        };
+      }
+
+      // Wait for changes to propagate
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Check HTML integrity AFTER making changes  
+      console.log(`🔍 Checking HTML integrity after update: ${pageUrl}`);
+      const afterReport = await htmlIntegrityService.checkPageIntegrity(pageUrl);
+
+      // Compare integrity reports
+      const comparison = await htmlIntegrityService.compareIntegrity(beforeReport, afterReport);
+
+      if (!comparison.integrityMaintained || comparison.newErrors.length > 0) {
+        console.error(`❌ HTML integrity compromised! New errors: ${comparison.newErrors.join(', ')}`);
+        
+        // Attempt automatic rollback
+        console.log(`🔄 Attempting automatic rollback for post ${postId}`);
+        const rollbackSuccess = await this.rollbackMetaChanges(postId);
+        
+        return {
+          success: false,
+          message: `Critical page update failed: HTML structure was compromised after applying meta description. ${rollbackSuccess ? 'Automatic rollback completed.' : 'Rollback failed - manual intervention required.'} New errors detected: ${comparison.newErrors.join(', ')}`,
+          integrityReport: { before: beforeReport, after: afterReport, comparison },
+          rollbackPerformed: rollbackSuccess
+        };
+      }
+
+      // Success - integrity maintained
+      console.log(`✅ Meta description updated successfully with HTML integrity maintained`);
+      return {
+        success: true,
+        message: 'Meta description updated successfully with HTML integrity verified',
+        integrityReport: { before: beforeReport, after: afterReport, comparison }
+      };
+
+    } catch (error: any) {
+      console.error(`Error in safe meta description update:`, error);
+      
+      // If we have reports, attempt rollback
+      if (beforeReport && pageUrl) {
+        console.log(`🔄 Error occurred, attempting rollback for post ${postId}`);
+        const rollbackSuccess = await this.rollbackMetaChanges(postId);
+        
+        return {
+          success: false,
+          message: `Update failed due to error: ${error.message}. ${rollbackSuccess ? 'Automatic rollback completed.' : 'Rollback failed - manual intervention required.'}`,
+          rollbackPerformed: rollbackSuccess
+        };
+      }
+
+      return {
+        success: false,
+        message: `Failed to update meta description: ${error.message}`
+      };
+    }
+  }
+
+  private async rollbackMetaChanges(postId: number): Promise<boolean> {
+    try {
+      // Remove the meta description by setting it to empty
+      const rollbackResponse = await axios.post(
+        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
+        {
+          post_id: postId,
+          meta_description: ''
         },
         { headers: this.getAuthHeaders() }
       );
       
-      console.log(`✓ Meta description updated successfully:`, updateResponse.data);
-      return true;
-      
-    } catch (error: any) {
-      console.error(`Meta description update failed for post ${postId}:`, error.response?.data?.message || error.message);
+      if (rollbackResponse.data?.success) {
+        console.log(`✅ Rollback successful for post ${postId}`);
+        return true;
+      } else {
+        console.error(`❌ Rollback failed for post ${postId}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`❌ Rollback error for post ${postId}:`, error);
       return false;
     }
   }
@@ -449,8 +550,12 @@ export class WordPressService {
 
       switch (fix.type) {
         case 'meta_description':
-          success = await this.updatePostMetaDescription(targetPostId, fix.newValue);
-          message = success ? `Meta description updated successfully for post ID ${targetPostId}` : 'Failed to update meta description - this may require additional WordPress permissions';
+          const metaResult = await this.updatePostMetaDescription(targetPostId, fix.newValue);
+          success = metaResult.success;
+          message = metaResult.message;
+          if (metaResult.rollbackPerformed) {
+            message += ' (Automatic rollback was performed due to HTML integrity issues)';
+          }
           break;
 
         case 'title_tag':
