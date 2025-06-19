@@ -171,42 +171,155 @@ export class CrawlerService {
       url = `https://${url}`;
     }
 
-    // Try HTTP first for faster results with retry logic
+    const isProblematicDomain = url.includes('synviz.com');
+    
+    // For synviz.com, try multiple approaches with retries
+    if (isProblematicDomain) {
+      return await this.crawlSynvizWithRetries(url);
+    }
+
+    // Standard crawling for other domains
+    return await this.standardCrawl(url);
+  }
+
+  private async crawlSynvizWithRetries(url: string): Promise<PageDataType> {
+    const maxRetries = 3;
+    const delays = [2000, 5000, 10000]; // Progressive delays
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      console.log(`Synviz crawl attempt ${attempt + 1}/${maxRetries}`);
+      
+      try {
+        // Try multiple methods in sequence
+        const methods = [
+          () => this.tryHTTPWithLongTimeout(url),
+          () => this.tryBrowserWithSpecialHandling(url),
+          () => this.tryAlternativeHTTP(url)
+        ];
+        
+        for (const method of methods) {
+          try {
+            return await method();
+          } catch (error: any) {
+            console.warn(`Method failed: ${error.message}`);
+            continue;
+          }
+        }
+        
+      } catch (error: any) {
+        console.warn(`Attempt ${attempt + 1} failed: ${error.message}`);
+        
+        if (attempt < maxRetries - 1) {
+          console.log(`Waiting ${delays[attempt]}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+        }
+      }
+    }
+    
+    throw new Error('All synviz.com crawling methods exhausted');
+  }
+
+  private async tryHTTPWithLongTimeout(url: string): Promise<PageDataType> {
+    const response = await axios.get(url, {
+      timeout: 30000,
+      maxRedirects: 10,
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache'
+      },
+      httpsAgent: new (require('https').Agent)({
+        keepAlive: true,
+        timeout: 30000,
+        maxSockets: 1
+      })
+    });
+    
+    return await this.parseHTML(response.data, url, 'http');
+  }
+
+  private async tryBrowserWithSpecialHandling(url: string): Promise<PageDataType> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+        '--no-zygote'
+      ],
+      executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium'
+    });
+
+    const page = await browser.newPage();
+    
+    try {
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Set longer timeout and wait for load
+      await page.goto(url, { 
+        timeout: 45000,
+        waitUntil: 'domcontentloaded'
+      });
+      
+      // Additional wait for dynamic content
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const html = await page.content();
+      return await this.parseHTML(html, url, 'browser');
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private async tryAlternativeHTTP(url: string): Promise<PageDataType> {
+    // Try with different HTTP configuration
+    const response = await axios.get(url, {
+      timeout: 20000,
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Encoding': 'identity'
+      },
+      httpsAgent: new (require('https').Agent)({
+        rejectUnauthorized: false,
+        timeout: 20000
+      })
+    });
+    
+    return await this.parseHTML(response.data, url, 'http');
+  }
+
+  private async standardCrawl(url: string): Promise<PageDataType> {
+    const httpTimeout = 5000;
+    
     try {
       const response = await axios.get(url, {
-        timeout: 5000,
+        timeout: httpTimeout,
+        maxRedirects: 5,
         headers: { 
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
           'Accept-Encoding': 'gzip, deflate, br',
           'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1'
-        }
+          'Upgrade-Insecure-Requests': '1',
+          'Cache-Control': 'no-cache'
+        },
+        httpsAgent: new (require('https').Agent)({
+          keepAlive: true,
+          timeout: httpTimeout
+        })
       });
-      
-      // Check for rate limiting
-      if (response.status === 429) {
-        const retryAfter = response.headers['retry-after'];
-        if (retryAfter) {
-          console.warn(`Rate limited, retry after ${retryAfter} seconds`);
-          await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
-        }
-      }
       
       return await this.parseHTML(response.data, url, 'http');
     } catch (httpError: any) {
-      // Handle specific HTTP errors
-      if (httpError.response?.status === 403) {
-        console.warn(`[HTTP blocked] 403 Forbidden for ${url}, trying stealth browser...`);
-      } else if (httpError.response?.status === 429) {
-        console.warn(`[HTTP rate limited] 429 for ${url}, trying stealth browser...`);
-      } else {
-        console.warn(`[HTTP failed] ${httpError.message}, trying stealth browser...`);
-      }
+      console.warn(`[HTTP failed] ${httpError.message}, trying stealth browser...`);
       
       try {
-        // Fallback to Puppeteer with stealth mode
         const html = await this.getHTMLWithPuppeteer(url);
         return await this.parseHTML(html, url, 'browser');
       } catch (browserError: any) {
@@ -215,7 +328,7 @@ export class CrawlerService {
     }
   }
 
-  private async getHTMLWithPuppeteer(url: string): Promise<string> {
+  private async getHTMLWithPuppeteer(url: string, isProblematicDomain: boolean = false): Promise<string> {
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -224,10 +337,20 @@ export class CrawlerService {
 
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.goto(url, { timeout: 8000 }); // Reduced timeout
-    const html = await page.content();
-    await browser.close();
-    return html;
+    
+    // Extended timeout for problematic domains
+    const timeout = isProblematicDomain ? 30000 : 8000;
+    
+    try {
+      await page.goto(url, { 
+        timeout,
+        waitUntil: 'networkidle0' // Wait for network to be idle
+      });
+      const html = await page.content();
+      return html;
+    } finally {
+      await browser.close();
+    }
   }
 
   private async parseHTML(html: string, url: string, source: 'browser' | 'http'): Promise<PageDataType> {
