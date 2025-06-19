@@ -274,10 +274,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wpService = new WordPressService('https://synviz.com');
       const content = await wpService.getAllContent();
       
-      res.json(content);
+      res.json({
+        totalContent: content.totalContent,
+        postsCount: content.posts.length,
+        pagesCount: content.pages.length,
+        samplePost: content.posts[0] ? {
+          id: content.posts[0].id,
+          title: content.posts[0].title?.rendered,
+          link: content.posts[0].link,
+          excerptLength: content.posts[0].excerpt?.rendered?.length || 0
+        } : null
+      });
     } catch (error) {
       console.error('WordPress content fetch error:', error);
       res.status(500).json({ error: 'Failed to fetch WordPress content' });
+    }
+  });
+
+  app.get("/api/wordpress/page-data", async (req, res) => {
+    try {
+      const wpService = new WordPressService('https://synviz.com');
+      const pageData = await wpService.getContentAsPageData();
+      
+      res.json({
+        totalPages: pageData.length,
+        samplePage: pageData[0] || null,
+        pages: pageData.slice(0, 3) // First 3 pages for testing
+      });
+    } catch (error) {
+      console.error('WordPress page data error:', error);
+      res.status(500).json({ error: 'Failed to fetch WordPress page data' });
     }
   });
 
