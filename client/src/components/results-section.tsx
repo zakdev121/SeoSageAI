@@ -29,7 +29,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
 
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/audits/${auditId}/pdf`);
+      const response = await fetch(`/api/audits/${auditId}/download`);
       if (!response.ok) throw new Error('Failed to download PDF');
       
       const blob = await response.blob();
