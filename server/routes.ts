@@ -143,9 +143,9 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     const fullUrl = url.includes('://') ? url : `https://${url}`;
     const domainUrl = url.replace(/^https?:\/\//, '');
 
-    // 1. Crawl website  
-    console.log(`Starting crawl for ${fullUrl} (normalized from ${url})`);
-    const pages = await crawlerService.crawlWebsite(fullUrl, 5);
+    // 1. Crawl website (up to 25 pages for comprehensive analysis)
+    console.log(`Starting comprehensive crawl for ${fullUrl}`);
+    const pages = await crawlerService.crawlWebsite(fullUrl, 25);
     await storage.updateAuditProgress(auditId, 30);
 
     // 2. Get GSC data
