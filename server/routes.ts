@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Audit or results not found' });
       }
 
-      const reportService = new ReportService();
+      const reportService = new EnhancedReportService();
       const pdfBuffer = await reportService.generatePDFReport(audit.results);
       
       res.setHeader('Content-Type', 'application/pdf');
@@ -134,7 +134,7 @@ async function processAudit(auditId: number, url: string, industry: string, emai
   const gscService = new GSCService();
   const keywordService = new KeywordService();
   const aiService = new AIService();
-  const reportService = new ReportService();
+  const reportService = new EnhancedReportService();
   const pageSpeedService = new PageSpeedService();
   const customSearchService = new CustomSearchService();
   // const emailService = new EmailService(); // Disabled for now
