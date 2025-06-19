@@ -269,6 +269,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/wordpress/all-content", async (req, res) => {
+    try {
+      const wpService = new WordPressService('https://synviz.com');
+      const content = await wpService.getAllContent();
+      
+      res.json(content);
+    } catch (error) {
+      console.error('WordPress content fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch WordPress content' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

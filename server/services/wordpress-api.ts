@@ -85,6 +85,134 @@ export class WordPressService {
     }
   }
 
+  async getAllPages(): Promise<WordPressPost[]> {
+    try {
+      const allPages: WordPressPost[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await axios.get(`${this.baseUrl}/pages`, {
+          headers: this.getAuthHeaders(),
+          params: {
+            per_page: 100,
+            page: page,
+            status: 'publish'
+          }
+        });
+
+        const pages = response.data;
+        allPages.push(...pages);
+
+        hasMore = pages.length === 100;
+        page++;
+      }
+
+      return allPages;
+    } catch (error) {
+      console.error('Error fetching WordPress pages:', error);
+      return [];
+    }
+  }
+
+  async getAllContent(): Promise<{ posts: WordPressPost[]; pages: WordPressPost[]; totalContent: number }> {
+    try {
+      const [posts, pages] = await Promise.all([
+        this.getAllPosts(),
+        this.getAllPages()
+      ]);
+      
+      return {
+        posts,
+        pages,
+        totalContent: posts.length + pages.length
+      };
+    } catch (error) {
+      console.error('Error fetching all content:', error);
+      return { posts: [], pages: [], totalContent: 0 };
+    }
+  }
+
+  async getContentAsPageData(): Promise<any[]> {
+    try {
+      const { posts, pages } = await this.getAllContent();
+      const allContent = [...posts, ...pages];
+      
+      return allContent.map(content => ({
+        url: content.link || `${this.baseUrl.replace('/wp-json/wp/v2', '')}/${content.slug}`,
+        title: content.title?.rendered || '',
+        metaDescription: content.excerpt?.rendered?.replace(/<[^>]*>/g, '').trim() || '',
+        h1: [content.title?.rendered || ''],
+        h2: this.extractHeadings(content.content?.rendered || '', 'h2'),
+        wordCount: this.countWords(content.content?.rendered || ''),
+        images: this.extractImages(content.content?.rendered || ''),
+        internalLinks: this.extractInternalLinks(content.content?.rendered || ''),
+        externalLinks: this.extractExternalLinks(content.content?.rendered || ''),
+        brokenLinks: [] // Would need additional checking
+      }));
+    } catch (error) {
+      console.error('Error converting WordPress content to page data:', error);
+      return [];
+    }
+  }
+
+  private extractHeadings(content: string, tag: string): string[] {
+    const regex = new RegExp(`<${tag}[^>]*>(.*?)<\/${tag}>`, 'gi');
+    const matches = content.match(regex) || [];
+    return matches.map(match => match.replace(/<[^>]*>/g, '').trim());
+  }
+
+  private countWords(content: string): number {
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    return text.split(/\s+/).filter(word => word.length > 0).length;
+  }
+
+  private extractImages(content: string): any[] {
+    const imgRegex = /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/gi;
+    const images: any[] = [];
+    let match;
+    
+    while ((match = imgRegex.exec(content)) !== null) {
+      images.push({
+        src: match[1],
+        alt: match[2] || '',
+        size: undefined
+      });
+    }
+    
+    return images;
+  }
+
+  private extractInternalLinks(content: string): string[] {
+    const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>/gi;
+    const links: string[] = [];
+    let match;
+    
+    while ((match = linkRegex.exec(content)) !== null) {
+      const href = match[1];
+      if (href.includes(this.baseUrl.replace('/wp-json/wp/v2', '')) || href.startsWith('/')) {
+        links.push(href);
+      }
+    }
+    
+    return links;
+  }
+
+  private extractExternalLinks(content: string): string[] {
+    const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>/gi;
+    const links: string[] = [];
+    let match;
+    
+    while ((match = linkRegex.exec(content)) !== null) {
+      const href = match[1];
+      if (href.startsWith('http') && !href.includes(this.baseUrl.replace('/wp-json/wp/v2', ''))) {
+        links.push(href);
+      }
+    }
+    
+    return links;
+  }
+
   async updatePostMetaDescription(postId: number, metaDescription: string): Promise<boolean> {
     try {
       // Get the current post content first
