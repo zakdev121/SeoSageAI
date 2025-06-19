@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import { PageDataType } from '@shared/schema';
+import fetch from 'node-fetch';
 
 export class CrawlerService {
   private browser: puppeteer.Browser | null = null;
@@ -28,10 +29,6 @@ export class CrawlerService {
   }
 
   async crawlWebsite(url: string, maxPages: number = 5): Promise<PageDataType[]> {
-    if (!this.browser) {
-      await this.initialize();
-    }
-
     const results: PageDataType[] = [];
     const visited = new Set<string>();
     const toVisit = [url];
@@ -44,7 +41,8 @@ export class CrawlerService {
       console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
-        const pageData = await this.crawlPage(currentUrl);
+        // Use HTTP-based crawling as primary method to avoid browser timeouts
+        const pageData = await this.crawlPageHTTP(currentUrl);
         results.push(pageData);
 
         // Extract internal links for further crawling (limit to prevent infinite loops)
@@ -143,7 +141,96 @@ export class CrawlerService {
     }
   }
 
+  private async crawlPageHTTP(url: string): Promise<PageDataType> {
+    // Ensure URL has protocol
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      // Extract title
+      const title = $('title').text().trim();
+
+      // Extract meta description
+      const metaDescription = $('meta[name="description"]').attr('content') || '';
+
+      // Extract headings
+      const h1 = $('h1').map((_, el) => $(el).text().trim()).get();
+      const h2 = $('h2').map((_, el) => $(el).text().trim()).get();
+
+      // Extract images
+      const images = $('img').map((_, el) => ({
+        src: $(el).attr('src') || '',
+        alt: $(el).attr('alt') || ''
+      })).get();
+
+      // Extract internal links
+      const baseUrl = new URL(url);
+      const internalLinks = $('a[href]').map((_, el) => {
+        const href = $(el).attr('href');
+        if (!href) return null;
+        
+        try {
+          const linkUrl = new URL(href, baseUrl);
+          return linkUrl.hostname === baseUrl.hostname ? linkUrl.href : null;
+        } catch {
+          return null;
+        }
+      }).get().filter(Boolean);
+
+      // Extract external links
+      const externalLinks = $('a[href]').map((_, el) => {
+        const href = $(el).attr('href');
+        if (!href) return null;
+        
+        try {
+          const linkUrl = new URL(href, baseUrl);
+          return linkUrl.hostname !== baseUrl.hostname ? linkUrl.href : null;
+        } catch {
+          return null;
+        }
+      }).get().filter(Boolean);
+
+      // Calculate word count
+      const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+      const wordCount = textContent.split(/\s+/).length;
+
+      return {
+        url,
+        title,
+        metaDescription,
+        h1,
+        h2,
+        wordCount,
+        images,
+        internalLinks,
+        externalLinks,
+        brokenLinks: [] // HTTP fallback doesn't check for broken links
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
 
   async scrapeGoogleAutosuggest(keyword: string): Promise<string[]> {
     if (!this.browser) {
