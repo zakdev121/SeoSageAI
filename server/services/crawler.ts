@@ -1,23 +1,32 @@
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import { PageDataType } from '@shared/schema';
+import fetch from 'node-fetch';
 
 export class CrawlerService {
   private browser: puppeteer.Browser | null = null;
 
   async initialize() {
-    this.browser = await puppeteer.launch({
-      headless: true,
-      executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
-    });
+    try {
+      this.browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ]
+      });
+      console.log('Browser initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize browser:', error);
+      throw error;
+    }
   }
 
   async cleanup() {
@@ -44,7 +53,16 @@ export class CrawlerService {
       console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
-        const pageData = await this.crawlPage(currentUrl);
+        let pageData: PageDataType;
+        try {
+          // Try Puppeteer first
+          pageData = await this.crawlPage(currentUrl);
+        } catch (puppeteerError) {
+          console.log(`Puppeteer failed for ${currentUrl}, trying HTTP fallback...`);
+          // Fallback to HTTP-based crawling
+          pageData = await this.crawlPageHTTP(currentUrl);
+        }
+        
         results.push(pageData);
 
         // Extract internal links for further crawling (limit to prevent infinite loops)
@@ -142,6 +160,89 @@ export class CrawlerService {
     } finally {
       await page.close();
     }
+  }
+
+  private async crawlPageHTTP(url: string): Promise<PageDataType> {
+    // Ensure URL has protocol
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 15000
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Extract title
+    const title = $('title').text().trim();
+
+    // Extract meta description
+    const metaDescription = $('meta[name="description"]').attr('content') || '';
+
+    // Extract headings
+    const h1s = $('h1').map((_, el) => $(el).text().trim()).get();
+    const h2s = $('h2').map((_, el) => $(el).text().trim()).get();
+    const h3s = $('h3').map((_, el) => $(el).text().trim()).get();
+
+    // Extract images
+    const images = $('img').map((_, el) => ({
+      src: $(el).attr('src') || '',
+      alt: $(el).attr('alt') || ''
+    })).get();
+
+    // Extract internal links
+    const baseUrl = new URL(url);
+    const internalLinks = $('a[href]').map((_, el) => {
+      const href = $(el).attr('href');
+      if (!href) return null;
+      
+      try {
+        const linkUrl = new URL(href, baseUrl);
+        return linkUrl.hostname === baseUrl.hostname ? linkUrl.href : null;
+      } catch {
+        return null;
+      }
+    }).get().filter(Boolean);
+
+    // Extract external links
+    const externalLinks = $('a[href]').map((_, el) => {
+      const href = $(el).attr('href');
+      if (!href) return null;
+      
+      try {
+        const linkUrl = new URL(href, baseUrl);
+        return linkUrl.hostname !== baseUrl.hostname ? linkUrl.href : null;
+      } catch {
+        return null;
+      }
+    }).get().filter(Boolean);
+
+    // Extract text content
+    const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+
+    return {
+      url,
+      title,
+      metaDescription,
+      h1s,
+      h2s,
+      h3s,
+      images,
+      internalLinks,
+      externalLinks,
+      textContent,
+      loadTime: 0, // HTTP fallback doesn't measure load time
+      statusCode: response.status
+    };
   }
 
   async scrapeGoogleAutosuggest(keyword: string): Promise<string[]> {
