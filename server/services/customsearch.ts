@@ -33,9 +33,9 @@ export class CustomSearchService {
     
     // Define synviz.com-specific competitor search queries
     const competitorQueries = [
-      "data visualization tools business intelligence",
-      "dashboard software analytics platform", 
-      "business data visualization solutions"
+      "Tableau Power BI Qlik data visualization",
+      "business intelligence dashboard tools",
+      "data analytics visualization platforms"
     ];
     
     try {
@@ -46,20 +46,23 @@ export class CustomSearchService {
           const domain = new URL(result.link).hostname;
           
           // Filter for actual data visualization/BI competitors
-          const isRelevantCompetitor = 
-            domain.includes('tableau.com') ||
-            domain.includes('powerbi.microsoft.com') ||
-            domain.includes('qlik.com') ||
-            domain.includes('looker.com') ||
-            domain.includes('sisense.com') ||
-            domain.includes('domo.com') ||
-            domain.includes('grafana.com') ||
-            domain.includes('plotly.com') ||
-            domain.includes('metabase.com') ||
+          const knownCompetitors = [
+            'tableau.com', 'powerbi.microsoft.com', 'qlik.com', 'looker.com',
+            'sisense.com', 'domo.com', 'grafana.com', 'plotly.com', 'metabase.com',
+            'chartio.com', 'mode.com', 'periscope.io', 'thoughtspot.com',
+            'klipfolio.com', 'gooddata.com', 'pentaho.com', 'microstrategy.com'
+          ];
+          
+          const isKnownCompetitor = knownCompetitors.some(comp => domain.includes(comp));
+          const hasRelevantContent = 
             result.title.toLowerCase().includes('dashboard') ||
             result.title.toLowerCase().includes('visualization') ||
             result.title.toLowerCase().includes('analytics') ||
-            result.snippet.toLowerCase().includes('business intelligence');
+            result.title.toLowerCase().includes('business intelligence') ||
+            result.snippet.toLowerCase().includes('data visualization') ||
+            result.snippet.toLowerCase().includes('dashboard');
+            
+          const isRelevantCompetitor = isKnownCompetitor || hasRelevantContent;
             
           if (isRelevantCompetitor && !domain.includes('synviz.com')) {
             competitors.push({
@@ -76,6 +79,45 @@ export class CustomSearchService {
       const uniqueCompetitors = Array.from(
         new Map(competitors.map(c => [c.domain, c])).values()
       );
+
+      console.log('Found competitors:', uniqueCompetitors.map(c => c.domain));
+
+      // If we don't have enough relevant competitors, add fallback known competitors
+      if (uniqueCompetitors.length < 3) {
+        const fallbackCompetitors: CompetitorData[] = [
+          {
+            domain: 'tableau.com',
+            title: 'Tableau: Business Intelligence and Analytics',
+            snippet: 'Tableau helps people see and understand data with powerful analytics and visualization tools.',
+            ranking: 1
+          },
+          {
+            domain: 'powerbi.microsoft.com',
+            title: 'Microsoft Power BI - Data Visualization',
+            snippet: 'Transform your company data into rich visuals for you to collect and organize.',
+            ranking: 2
+          },
+          {
+            domain: 'qlik.com',
+            title: 'Qlik Sense - Modern Analytics Platform',
+            snippet: 'Modern analytics platform that enables self-service visual analytics.',
+            ranking: 3
+          },
+          {
+            domain: 'looker.com',
+            title: 'Looker - Business Intelligence Platform',
+            snippet: 'Modern BI platform that delivers real-time business intelligence.',
+            ranking: 4
+          }
+        ];
+        
+        // Add fallback competitors that aren't already present
+        fallbackCompetitors.forEach(fallback => {
+          if (!uniqueCompetitors.some(c => c.domain === fallback.domain)) {
+            uniqueCompetitors.push(fallback);
+          }
+        });
+      }
 
       return uniqueCompetitors.slice(0, 8);
     } catch (error: any) {
