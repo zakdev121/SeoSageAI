@@ -6,15 +6,19 @@ export interface IStorage {
   updateAuditProgress(id: number, progress: number): Promise<void>;
   completeAudit(id: number, results: AuditResultsType): Promise<void>;
   failAudit(id: number, error: string): Promise<void>;
+  markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void>;
+  getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>>;
 }
 
 export class MemStorage implements IStorage {
   private audits: Map<number, Audit>;
   private currentId: number;
+  private fixedIssues: Map<number, Array<{issueType: string, issueUrl: string, fixedAt: Date}>>;
 
   constructor() {
     this.audits = new Map();
     this.currentId = 1;
+    this.fixedIssues = new Map();
   }
 
   async createAudit(insertAudit: InsertAudit): Promise<Audit> {
