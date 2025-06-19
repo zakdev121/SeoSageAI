@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { Download, FileText, Brain, CheckCircle } from "lucide-react";
+import { AIAssistant } from "./ai-assistant";
 import type { AuditResultsType, Audit } from "@shared/schema";
 
 interface ResultsSectionProps {
@@ -194,9 +196,9 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                   <i className="fas fa-file-alt"></i>
                   <span>Content</span>
                 </TabsTrigger>
-                <TabsTrigger value="recommendations" className="flex items-center space-x-2">
-                  <i className="fas fa-lightbulb"></i>
-                  <span>AI Recommendations</span>
+                <TabsTrigger value="ai-solutions" className="flex items-center space-x-2">
+                  <Brain className="h-4 w-4" />
+                  <span>AI Solutions</span>
                 </TabsTrigger>
               </TabsList>
             </div>

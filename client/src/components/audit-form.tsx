@@ -24,10 +24,10 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
 
   const createAuditMutation = useMutation({
     mutationFn: async () => {
-      const selectedIndustryData = AVAILABLE_INDUSTRIES.find(ind => ind.id === selectedIndustry);
+      const allIndustries = AVAILABLE_INDUSTRIES.map(ind => ind.name).join(", ");
       const response = await apiRequest("POST", "/api/audits", {
         url: "synviz.com",
-        industry: selectedIndustryData?.name || "Tech Services"
+        industry: allIndustries
       });
       return response.json();
     },
@@ -75,30 +75,20 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
           <p className="text-lg font-mono">synviz.com</p>
         </div>
 
-        {/* Industry Selection */}
-        <div>
-          <label className="block text-sm font-medium mb-3">Select Industry Focus</label>
-          <div className="space-y-2">
+        {/* Industries Coverage */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            <span className="font-semibold">Multi-Industry Analysis</span>
+          </div>
+          <p className="text-sm text-gray-600 mb-3">
+            Analyzing synviz.com across all relevant industry contexts:
+          </p>
+          <div className="flex flex-wrap gap-2">
             {AVAILABLE_INDUSTRIES.map((industry) => (
-              <div 
-                key={industry.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedIndustry === industry.id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setSelectedIndustry(industry.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">{industry.name}</h4>
-                    <p className="text-sm text-gray-600">{industry.description}</p>
-                  </div>
-                  {selectedIndustry === industry.id && (
-                    <Badge variant="default">Selected</Badge>
-                  )}
-                </div>
-              </div>
+              <Badge key={industry.id} variant="secondary" className="text-xs">
+                {industry.name}
+              </Badge>
             ))}
           </div>
         </div>
