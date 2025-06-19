@@ -215,28 +215,40 @@ export class WordPressService {
 
   async updatePostMetaDescription(postId: number, metaDescription: string): Promise<boolean> {
     try {
-      // Get the current post content first
-      const getResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
-        headers: this.getAuthHeaders()
-      });
-
-      if (getResponse.status !== 200) {
-        return false;
-      }
-
-      // Update the post excerpt (which can serve as meta description fallback)
+      console.log(`Testing custom plugin meta update for post ${postId}`);
+      
+      // Try updating Yoast meta description via your custom plugin
       const updateResponse = await axios.post(
         `${this.baseUrl}/posts/${postId}`,
         {
-          excerpt: metaDescription
+          meta: {
+            '_yoast_wpseo_metadesc': metaDescription
+          }
         },
         { headers: this.getAuthHeaders() }
       );
 
+      console.log(`Custom plugin meta update response: ${updateResponse.status}`);
       return updateResponse.status === 200;
-    } catch (error) {
-      console.error('Error updating meta description:', error);
-      return false;
+    } catch (error: any) {
+      console.log(`Custom plugin meta update failed: ${error.response?.data?.message || error.message}`);
+      
+      // Fallback to excerpt update
+      try {
+        const fallbackResponse = await axios.post(
+          `${this.baseUrl}/posts/${postId}`,
+          {
+            excerpt: metaDescription
+          },
+          { headers: this.getAuthHeaders() }
+        );
+        
+        console.log(`Fallback excerpt update: ${fallbackResponse.status}`);
+        return fallbackResponse.status === 200;
+      } catch (fallbackError: any) {
+        console.error(`All meta update methods failed for post ${postId}:`, fallbackError.response?.data || fallbackError.message);
+        return false;
+      }
     }
   }
 
