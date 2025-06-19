@@ -16,6 +16,7 @@ interface AIAssistantProps {
 export function AIAssistant({ auditId }: AIAssistantProps) {
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [expandedResolution, setExpandedResolution] = useState<string | null>(null);
+  const [generatedBlogPost, setGeneratedBlogPost] = useState<any>(null);
 
   // Fetch AI-generated issue resolutions
   const { data: resolutions, isLoading: resolutionsLoading } = useQuery({
@@ -42,6 +43,9 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     mutationFn: async (topic: any) => {
       const response = await apiRequest("POST", `/api/audits/${auditId}/write-blog`, { topic });
       return response.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedBlogPost(data.blogPost);
     }
   });
 
@@ -301,7 +305,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
       </Tabs>
 
       {/* Blog Post Display */}
-      {writeBlogMutation.data && (
+      {generatedBlogPost && (
         <Card>
           <CardHeader>
             <CardTitle>Generated Blog Post</CardTitle>
@@ -310,7 +314,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <BlogPostDisplay blogPost={writeBlogMutation.data.blogPost} />
+            <BlogPostDisplay blogPost={generatedBlogPost} />
           </CardContent>
         </Card>
       )}
