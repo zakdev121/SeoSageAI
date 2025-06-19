@@ -547,28 +547,40 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     let pages: any[] = [];
     let contentSource = 'GSC + External APIs';
     
-    // Always prioritize direct crawling for comprehensive analysis
+    // Prioritize WordPress API first, then fallback to crawling
     try {
-      console.log(`Starting comprehensive crawling analysis for ${fullUrl}`);
-      pages = await crawlerService.crawlWebsite(fullUrl, 25);
-      contentSource = 'Web Crawling';
-      console.log(`Successfully crawled ${pages.length} pages from ${fullUrl}`);
-    } catch (crawlError: any) {
-      console.log(`Direct crawling failed for ${fullUrl}: ${crawlError.message}`);
+      const wpService = new WordPressService(fullUrl);
+      const isWordPress = await wpService.testConnection();
       
-      // WordPress API fallback only if crawling completely fails
-      if (fullUrl.includes('synviz.com')) {
-        console.log('Attempting WordPress API as fallback...');
-        try {
+      if (isWordPress) {
+        console.log(`WordPress detected for ${fullUrl} - using REST API for content analysis`);
+        pages = await wpService.getContentAsPageData();
+        contentSource = 'WordPress REST API';
+        console.log(`Successfully fetched ${pages.length} pages via WordPress API`);
+      } else {
+        console.log(`Non-WordPress site detected - attempting web crawling for ${fullUrl}`);
+        pages = await crawlerService.crawlWebsite(fullUrl, 25);
+        contentSource = 'Web Crawling';
+        console.log(`Successfully crawled ${pages.length} pages from ${fullUrl}`);
+      }
+    } catch (primaryError: any) {
+      console.log(`Primary method failed for ${fullUrl}: ${primaryError.message}`);
+      
+      // Fallback to alternative method
+      try {
+        if (primaryError.message.includes('WordPress')) {
+          console.log('WordPress API failed, falling back to web crawling...');
+          pages = await crawlerService.crawlWebsite(fullUrl, 25);
+          contentSource = 'Web Crawling (Fallback)';
+        } else {
+          console.log('Web crawling failed, attempting WordPress API fallback...');
           const wpService = new WordPressService(fullUrl);
           pages = await wpService.getContentAsPageData();
-          contentSource = 'WordPress REST API';
-          console.log(`Fallback: fetched ${pages.length} pages via WordPress API`);
-        } catch (wpError: any) {
-          console.log(`WordPress API also failed: ${wpError.message}`);
-          pages = [];
+          contentSource = 'WordPress REST API (Fallback)';
         }
-      } else {
+        console.log(`Fallback successful: ${pages.length} pages analyzed`);
+      } catch (fallbackError: any) {
+        console.log(`All content analysis methods failed for ${fullUrl}: ${fallbackError.message}`);
         pages = [];
       }
     }

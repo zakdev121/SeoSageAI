@@ -49,7 +49,18 @@ export class WordPressService {
       const response = await axios.get(`${this.baseUrl}/posts?per_page=1`, {
         headers: this.getAuthHeaders()
       });
-      return response.status === 200;
+      
+      // Check if response is actually JSON, not PHP code
+      const contentType = response.headers['content-type'] || '';
+      const responseText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      
+      // If response contains PHP code or isn't valid JSON, the API is broken
+      if (responseText.includes('<?php') || responseText.includes('function ') || !contentType.includes('json')) {
+        console.log('WordPress REST API returning PHP code instead of JSON - API is broken');
+        return false;
+      }
+      
+      return response.status === 200 && Array.isArray(response.data);
     } catch (error) {
       console.error('WordPress connection test failed:', error);
       return false;
