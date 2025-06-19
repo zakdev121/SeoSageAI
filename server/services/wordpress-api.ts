@@ -37,6 +37,7 @@ export class WordPressService {
 
   private getAuthHeaders() {
     const credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+    console.log(`Using WordPress credentials: ${this.username} (length: ${this.password.length})`);
     return {
       'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/json'
