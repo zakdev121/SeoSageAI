@@ -9,6 +9,8 @@ import { AIService } from "./services/ai";
 import { EnhancedReportService } from "./services/enhanced-report";
 import { PageSpeedService } from "./services/pagespeed";
 import { CustomSearchService } from "./services/customsearch";
+import { IssueResolverService } from "./services/issue-resolver";
+import { BlogWriterService } from "./services/blog-writer";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -69,6 +71,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate AI-powered issue resolutions
+  app.get("/api/audits/:id/resolutions", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit || !audit.results) {
+        return res.status(404).json({ error: 'Audit or results not found' });
+      }
+
+      const issueResolver = new IssueResolverService();
+      const resolutions = await issueResolver.generateIssueResolutions(audit.results);
+      
+      res.json(resolutions);
+    } catch (error: any) {
+      console.error('Error generating resolutions:', error);
+      res.status(500).json({ error: 'Failed to generate resolutions' });
+    }
+  });
+
+  // Generate blog strategy
+  app.get("/api/audits/:id/blog-strategy", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit || !audit.results) {
+        return res.status(404).json({ error: 'Audit or results not found' });
+      }
+
+      const blogWriter = new BlogWriterService();
+      const strategy = await blogWriter.generateBlogStrategy(audit.results);
+      
+      res.json(strategy);
+    } catch (error: any) {
+      console.error('Error generating blog strategy:', error);
+      res.status(500).json({ error: 'Failed to generate blog strategy' });
+    }
+  });
+
+  // Write a specific blog post
+  app.post("/api/audits/:id/write-blog", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { topic } = req.body;
+      
+      if (!topic) {
+        return res.status(400).json({ error: 'Blog topic is required' });
+      }
+
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit || !audit.results) {
+        return res.status(404).json({ error: 'Audit or results not found' });
+      }
+
+      const blogWriter = new BlogWriterService();
+      const blogPost = await blogWriter.writeBlogPost(topic, audit.results);
+      
+      res.json({ blogPost });
+    } catch (error: any) {
+      console.error('Error writing blog post:', error);
+      res.status(500).json({ error: 'Failed to write blog post' });
+    }
+  });
+
+  // Generate content calendar
+  app.post("/api/audits/:id/content-calendar", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { blogTopics } = req.body;
+      
+      if (!blogTopics || !Array.isArray(blogTopics)) {
+        return res.status(400).json({ error: 'Blog topics array is required' });
+      }
+
+      const blogWriter = new BlogWriterService();
+      const calendar = await blogWriter.generateContentCalendar(blogTopics);
+      
+      res.json(calendar);
+    } catch (error: any) {
+      console.error('Error generating content calendar:', error);
+      res.status(500).json({ error: 'Failed to generate content calendar' });
+    }
+  });
+
   // Send email report
   app.post("/api/audits/:id/email", async (req, res) => {
     try {
@@ -87,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Email functionality disabled
       res.status(501).json({ error: 'Email functionality is currently disabled' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending email:', error);
       res.status(500).json({ error: 'Failed to send email' });
     }

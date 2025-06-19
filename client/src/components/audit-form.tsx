@@ -1,52 +1,40 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAuditSchema } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
-
-const formSchema = insertAuditSchema.extend({
-  email: z.string().email().optional().or(z.literal(""))
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { Building2, Zap, Brain } from "lucide-react";
 
 interface AuditFormProps {
   onAuditStart: (auditId: number) => void;
 }
 
+const AVAILABLE_INDUSTRIES = [
+  { id: "tech-services", name: "Tech Services", description: "Software development and technical consulting" },
+  { id: "ai-automation", name: "AI & Automation", description: "Artificial intelligence and automation solutions" },
+  { id: "it-staffing", name: "IT Staffing", description: "Technical recruitment and staffing services" }
+];
+
 export function AuditForm({ onAuditStart }: AuditFormProps) {
   const { toast } = useToast();
+  const [selectedIndustry, setSelectedIndustry] = useState("tech-services");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      url: "",
-      industry: "Tech Services",
-      email: ""
-    }
-  });
-
   const createAuditMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async () => {
+      const selectedIndustryData = AVAILABLE_INDUSTRIES.find(ind => ind.id === selectedIndustry);
       const response = await apiRequest("POST", "/api/audits", {
-        ...data,
-        email: data.email || undefined
+        url: "synviz.com",
+        industry: selectedIndustryData?.name || "Tech Services"
       });
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Audit Started",
-        description: "Your SEO audit is now running. This may take 2-3 minutes.",
+        title: "AI Audit Started",
+        description: "Running comprehensive SEO analysis for synviz.com",
       });
       onAuditStart(data.auditId);
       setIsSubmitting(false);
@@ -61,88 +49,93 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
     }
   });
 
-  const onSubmit = async (data: FormData) => {
+  const handleStartAudit = async () => {
     setIsSubmitting(true);
-    createAuditMutation.mutate(data);
+    createAuditMutation.mutate();
   };
 
   return (
-    <Card className="mb-8">
-      <CardContent className="p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Run SEO Audit</h2>
-          <p className="text-slate-600">Analyze any website with AI-powered insights and recommendations</p>
+    <Card className="w-full max-w-lg mx-auto mb-8">
+      <CardHeader className="text-center">
+        <CardTitle className="flex items-center justify-center gap-2">
+          <Brain className="h-6 w-6 text-blue-600" />
+          AI SEO Audit for Synviz
+        </CardTitle>
+        <CardDescription>
+          Comprehensive AI-powered SEO analysis and issue resolution for synviz.com
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Website Info */}
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            <span className="font-semibold">Website</span>
+          </div>
+          <p className="text-lg font-mono">synviz.com</p>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <Label htmlFor="url" className="flex items-center text-sm font-medium text-slate-700 mb-2">
-              <i className="fas fa-globe text-slate-400 mr-2"></i>
-              Website URL
-            </Label>
-            <Input
-              id="url"
-              type="url"
-              placeholder="https://example.com"
-              {...form.register("url")}
-              className="w-full"
-              required
-            />
-            {form.formState.errors.url && (
-              <p className="text-sm text-red-500 mt-1">{form.formState.errors.url.message}</p>
-            )}
+        {/* Industry Selection */}
+        <div>
+          <label className="block text-sm font-medium mb-3">Select Industry Focus</label>
+          <div className="space-y-2">
+            {AVAILABLE_INDUSTRIES.map((industry) => (
+              <div 
+                key={industry.id}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedIndustry === industry.id 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setSelectedIndustry(industry.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{industry.name}</h4>
+                    <p className="text-sm text-gray-600">{industry.description}</p>
+                  </div>
+                  {selectedIndustry === industry.id && (
+                    <Badge variant="default">Selected</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <div>
-            <Label htmlFor="industry" className="flex items-center text-sm font-medium text-slate-700 mb-2">
-              <i className="fas fa-industry text-slate-400 mr-2"></i>
-              Industry
-            </Label>
-            <Select defaultValue="Tech Services" onValueChange={(value) => form.setValue("industry", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Tech Services">Tech Services</SelectItem>
-                <SelectItem value="E-commerce">E-commerce</SelectItem>
-                <SelectItem value="Healthcare">Healthcare</SelectItem>
-                <SelectItem value="Finance">Finance</SelectItem>
-                <SelectItem value="Education">Education</SelectItem>
-                <SelectItem value="Real Estate">Real Estate</SelectItem>
-                <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                <SelectItem value="Consulting">Consulting</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Audit Features */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-semibold mb-2 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            What You'll Get
+          </h4>
+          <ul className="text-sm space-y-1 text-gray-600">
+            <li>• Complete SEO health analysis</li>
+            <li>• AI-powered issue resolutions with step-by-step fixes</li>
+            <li>• Custom blog strategy and content generation</li>
+            <li>• Google Search Console performance insights</li>
+            <li>• Professional PDF report</li>
+          </ul>
+        </div>
 
-          <div>
-            <Label htmlFor="email" className="flex items-center text-sm font-medium text-slate-700 mb-2">
-              <i className="fas fa-envelope text-slate-400 mr-2"></i>
-              Email Report (Optional)
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your-email@company.com"
-              {...form.register("email")}
-              className="w-full"
-            />
-            <p className="text-sm text-slate-500 mt-1">Leave empty to download report directly</p>
-            {form.formState.errors.email && (
-              <p className="text-sm text-red-500 mt-1">{form.formState.errors.email.message}</p>
-            )}
-          </div>
-
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full bg-primary text-white py-3 px-6 font-medium hover:bg-blue-700 flex items-center justify-center space-x-2"
-          >
-            <i className="fas fa-rocket"></i>
-            <span>{isSubmitting ? "Starting Audit..." : "Run SEO Audit"}</span>
-          </Button>
-        </form>
+        <Button 
+          onClick={handleStartAudit}
+          className="w-full" 
+          disabled={isSubmitting}
+          size="lg"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Running AI Audit...
+            </>
+          ) : (
+            <>
+              <Brain className="h-4 w-4 mr-2" />
+              Start AI SEO Audit
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
