@@ -119,6 +119,35 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     await applyFixMutation.mutateAsync(fix);
   };
 
+  const testWordPressConnection = async () => {
+    setTestingConnection(true);
+    try {
+      const response = await fetch('/api/wordpress/test-connection');
+      const data = await response.json();
+      
+      if (data.connected) {
+        toast({
+          title: "WordPress Connection Successful",
+          description: "Ready to apply SEO fixes automatically to your WordPress site.",
+        });
+      } else {
+        toast({
+          title: "WordPress Connection Failed",
+          description: "Please check your WordPress credentials in the environment settings.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Test Failed",
+        description: "Unable to test WordPress connection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'destructive';
@@ -170,6 +199,34 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* WordPress Connection Status */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">WordPress Integration</CardTitle>
+                      <CardDescription>
+                        Test your WordPress connection to enable automatic SEO fix application
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={testWordPressConnection}
+                      disabled={testingConnection}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {testingConnection ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                          Testing...
+                        </>
+                      ) : (
+                        'Test Connection'
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+              </Card>
               {/* Critical Issues */}
               {resolutions?.criticalResolutions?.length > 0 && (
                 <Card>
