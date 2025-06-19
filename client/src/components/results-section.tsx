@@ -586,41 +586,21 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="recommendations">
+            <TabsContent value="ai-solutions">
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
-                    <i className="fas fa-robot text-primary mr-2"></i>
-                    AI-Generated Content Ideas
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    {results.aiRecommendations.map((rec, index) => (
-                      <div key={index} className="border border-slate-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-slate-900">{rec.title}</h4>
-                          <Badge className={`ml-2 ${
-                            rec.priority === 'high' ? 'bg-red-100 text-red-800' :
-                            rec.priority === 'medium' ? 'bg-amber-100 text-amber-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {rec.priority} priority
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-slate-700 mb-2">{rec.description}</p>
-                        {rec.targetKeyword && (
-                          <p className="text-xs text-slate-500">Target keyword: {rec.targetKeyword}</p>
-                        )}
-                        {rec.content && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded text-sm">
-                            <strong>Suggested content:</strong>
-                            <p className="mt-1">{rec.content}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <Card className="border-blue-200 bg-blue-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-blue-600" />
+                      AI-Powered SEO Solutions
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Review AI-generated issue resolutions and blog content strategy. Approve solutions to implement.
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <AIAssistant auditId={auditId} />
               </div>
             </TabsContent>
           </CardContent>
