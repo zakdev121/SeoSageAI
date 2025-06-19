@@ -329,6 +329,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/wordpress/test-plugin", async (req, res) => {
+    try {
+      console.log('Testing custom WordPress plugin functionality...');
+      const wpService = new WordPressService('https://synviz.com');
+      
+      // Test meta description update for post 80340
+      const testMetaDesc = `PLUGIN TEST ${Date.now()}: Updated via SEO AI Agent custom plugin integration`;
+      const result = await wpService.updatePostMetaDescription(80340, testMetaDesc);
+      
+      res.json({
+        success: result,
+        message: result ? 'Custom plugin test successful' : 'Custom plugin test failed',
+        testMetaDescription: testMetaDesc,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('WordPress plugin test error:', error);
+      res.status(500).json({ error: 'Failed to test WordPress plugin' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

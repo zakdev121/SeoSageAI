@@ -217,7 +217,24 @@ export class WordPressService {
     try {
       console.log(`Testing custom plugin meta update for post ${postId}`);
       
-      // Try updating Yoast meta description via your custom plugin
+      // Check if custom Synviz endpoints are available
+      try {
+        const customUpdateResponse = await axios.post(
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/seo-update/${postId}`,
+          {
+            meta_type: 'metadesc',
+            meta_value: metaDescription
+          },
+          { headers: this.getAuthHeaders() }
+        );
+        
+        console.log(`Custom Synviz endpoint response: ${customUpdateResponse.status}`);
+        return customUpdateResponse.status === 200;
+      } catch (customError: any) {
+        console.log(`Custom Synviz endpoint not available: ${customError.response?.status || customError.message}`);
+      }
+      
+      // Try updating via standard meta endpoint with custom plugin
       const updateResponse = await axios.post(
         `${this.baseUrl}/posts/${postId}`,
         {
@@ -228,12 +245,12 @@ export class WordPressService {
         { headers: this.getAuthHeaders() }
       );
 
-      console.log(`Custom plugin meta update response: ${updateResponse.status}`);
+      console.log(`Standard meta update response: ${updateResponse.status}`);
       return updateResponse.status === 200;
     } catch (error: any) {
-      console.log(`Custom plugin meta update failed: ${error.response?.data?.message || error.message}`);
+      console.log(`Standard meta update failed: ${error.response?.data?.message || error.message}`);
       
-      // Fallback to excerpt update
+      // Fallback to excerpt update  
       try {
         const fallbackResponse = await axios.post(
           `${this.baseUrl}/posts/${postId}`,
@@ -246,7 +263,7 @@ export class WordPressService {
         console.log(`Fallback excerpt update: ${fallbackResponse.status}`);
         return fallbackResponse.status === 200;
       } catch (fallbackError: any) {
-        console.error(`All meta update methods failed for post ${postId}:`, fallbackError.response?.data || fallbackError.message);
+        console.error(`All update methods failed for post ${postId}:`, fallbackError.response?.data || fallbackError.message);
         return false;
       }
     }
