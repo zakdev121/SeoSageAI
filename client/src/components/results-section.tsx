@@ -7,8 +7,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Download, FileText, Brain, CheckCircle } from "lucide-react";
+import { Download, FileText, Brain, CheckCircle, TrendingUp, AlertCircle } from "lucide-react";
 import { AIAssistant } from "./ai-assistant";
+import { useFixedIssues } from "@/hooks/use-fixed-issues";
 import type { AuditResultsType, Audit } from "@shared/schema";
 
 interface ResultsSectionProps {
@@ -26,6 +27,8 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
     },
     enabled: !!auditId
   });
+
+  const { data: fixedIssuesData } = useFixedIssues(auditId);
 
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
@@ -155,12 +158,42 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
               <div className="text-sm text-slate-600">Pages Analyzed</div>
             </div>
             <div className="bg-green-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{results.stats.seoScore}</div>
+              <div className="flex items-center justify-center space-x-2">
+                <div className="text-2xl font-bold text-green-600">
+                  {fixedIssuesData?.improvedScore || results.stats.seoScore}
+                </div>
+                {fixedIssuesData?.scoreImprovement && fixedIssuesData.scoreImprovement > 0 && (
+                  <div className="flex items-center text-green-700">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-sm font-medium">+{fixedIssuesData.scoreImprovement}</span>
+                  </div>
+                )}
+              </div>
               <div className="text-sm text-slate-600">SEO Score</div>
+              {fixedIssuesData?.scoreImprovement && fixedIssuesData.scoreImprovement > 0 && (
+                <div className="text-xs text-green-700 mt-1">
+                  Improved from {fixedIssuesData.originalScore}
+                </div>
+              )}
             </div>
             <div className="bg-amber-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-amber-600">{results.stats.issues}</div>
+              <div className="flex items-center justify-center space-x-2">
+                <div className="text-2xl font-bold text-amber-600">
+                  {fixedIssuesData?.remainingIssues ?? results.stats.issues}
+                </div>
+                {fixedIssuesData?.fixedSummary.totalFixed && fixedIssuesData.fixedSummary.totalFixed > 0 && (
+                  <div className="flex items-center text-green-600">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">-{fixedIssuesData.fixedSummary.totalFixed}</span>
+                  </div>
+                )}
+              </div>
               <div className="text-sm text-slate-600">Issues Found</div>
+              {fixedIssuesData?.fixedSummary.totalFixed && fixedIssuesData.fixedSummary.totalFixed > 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  {fixedIssuesData.fixedSummary.totalFixed} issues resolved
+                </div>
+              )}
             </div>
             <div className="bg-blue-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{results.stats.opportunities}</div>
@@ -169,6 +202,28 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* SEO Improvements Banner */}
+      {fixedIssuesData?.fixedSummary.totalFixed && fixedIssuesData.fixedSummary.totalFixed > 0 && (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-green-800">SEO Improvements Applied</h3>
+                <p className="text-green-700 text-sm">{fixedIssuesData.impact.description}</p>
+                <p className="text-green-600 text-xs mt-1">{fixedIssuesData.impact.recommendation}</p>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-green-600">
+                  +{fixedIssuesData.scoreImprovement} points
+                </div>
+                <div className="text-xs text-green-600">Score improvement</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabbed Content */}
       <Card>
