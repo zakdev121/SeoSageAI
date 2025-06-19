@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Download PDF report
-  app.get("/api/audits/:id/pdf", async (req, res) => {
+  app.get("/api/audits/:id/download", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
       const audit = await storage.getAudit(auditId);
