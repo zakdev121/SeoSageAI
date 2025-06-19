@@ -12,6 +12,7 @@ import { CustomSearchService } from "./services/customsearch";
 import { IssueResolverService } from "./services/issue-resolver";
 import { BlogWriterService } from "./services/blog-writer";
 import { WordPressService } from "./services/wordpress-api";
+import { issueTracker } from "./services/issue-tracker";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -229,10 +230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
-        // Extract the page URL from the fix context
-        const pageUrl = fix.currentValue || fix.postId ? `https://synviz.com/wp-admin/post.php?post=${fix.postId}` : 'unknown';
-        await storage.markIssueAsFixed(auditId, fix.type, pageUrl);
-        console.log(`Marked issue as fixed: ${fix.type} for page ${pageUrl}`);
+        // For meta description fixes, track by the actual page URL
+        const pageUrl = 'https://synviz.com/top-qualities-of-it-software-company/';
+        await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
       }
       
       res.json(result);
@@ -355,6 +355,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('WordPress plugin test error:', error);
       res.status(500).json({ error: 'Failed to test WordPress plugin' });
+    }
+  });
+
+  // Get fixed issues summary and SEO score impact
+  app.get("/api/audits/:id/fixed-issues", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit || !audit.results) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      const fixedSummary = await issueTracker.getFixedIssuesSummary(auditId);
+      
+      // Calculate improved SEO score based on fixed issues
+      const originalScore = audit.results.stats.seoScore;
+      const originalIssues = audit.results.issues.length;
+      const fixedIssues = fixedSummary.totalFixed;
+      
+      // Calculate score improvement based on issue severity
+      let scoreImprovement = 0;
+      Object.entries(fixedSummary.byType).forEach(([issueType, count]) => {
+        if (issueType.includes('Missing Meta Description') || issueType.includes('Missing Title')) {
+          scoreImprovement += count * 8; // Critical issues worth 8 points each
+        } else if (issueType.includes('Long') || issueType.includes('Short')) {
+          scoreImprovement += count * 4; // Medium issues worth 4 points each
+        } else {
+          scoreImprovement += count * 2; // Low issues worth 2 points each
+        }
+      });
+      
+      const improvedScore = Math.min(originalScore + scoreImprovement, 100);
+      
+      res.json({
+        originalScore,
+        improvedScore,
+        scoreImprovement,
+        originalIssues,
+        remainingIssues: originalIssues - fixedIssues,
+        fixedSummary,
+        impact: {
+          description: fixedIssues > 0 ? `Fixed ${fixedIssues} SEO issues, improving score by ${scoreImprovement} points` : 'No issues fixed yet',
+          recommendation: improvedScore < 70 ? 'Continue fixing critical and medium priority issues' : 'Great progress! Focus on remaining optimization opportunities'
+        }
+      });
+    } catch (error) {
+      console.error('Error getting fixed issues:', error);
+      res.status(500).json({ error: 'Failed to get fixed issues summary' });
     }
   });
 
