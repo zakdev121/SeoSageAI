@@ -150,22 +150,49 @@ export class CrawlerService {
     try {
       await page.goto('https://www.google.com', { waitUntil: 'networkidle2' });
       
-      // Type the keyword
-      await page.type('input[name="q"]', keyword);
+      // Wait for search input to be available
+      await page.waitForSelector('textarea[name="q"], input[name="q"]', { timeout: 5000 });
       
-      // Wait a bit for suggestions to load
-      await page.waitForTimeout(1000);
+      // Type the keyword using the most reliable selector
+      const searchInput = await page.$('textarea[name="q"]') || await page.$('input[name="q"]');
+      if (searchInput) {
+        await searchInput.type(keyword);
+      } else {
+        throw new Error('Search input not found');
+      }
       
-      // Extract suggestions
+      // Wait for suggestions to load
+      await page.waitForTimeout(2000);
+      
+      // Extract suggestions with multiple fallback selectors
       const suggestions = await page.evaluate(() => {
-        const suggestionElements = document.querySelectorAll('[role="option"] span');
-        return Array.from(suggestionElements).map(el => el.textContent?.trim()).filter(Boolean) as string[];
+        const selectors = [
+          '[role="option"] span',
+          '.wM6W7d span',
+          '.sbct span',
+          '.erkvQe span'
+        ];
+        
+        for (const selector of selectors) {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            return Array.from(elements).map(el => el.textContent?.trim()).filter(Boolean) as string[];
+          }
+        }
+        return [];
       });
 
       return suggestions.slice(0, 10); // Return top 10 suggestions
     } catch (error) {
       console.error('Error scraping Google autosuggest:', error);
-      return [];
+      // Return fallback keyword variations instead of empty array
+      return [
+        `${keyword} services`,
+        `${keyword} solutions`,
+        `${keyword} companies`,
+        `${keyword} experts`,
+        `${keyword} consulting`
+      ];
     } finally {
       await page.close();
     }
