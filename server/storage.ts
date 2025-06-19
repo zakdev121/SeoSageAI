@@ -68,6 +68,29 @@ export class MemStorage implements IStorage {
       this.audits.set(id, audit);
     }
   }
+
+  async markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void> {
+    if (!this.fixedIssues.has(auditId)) {
+      this.fixedIssues.set(auditId, []);
+    }
+    
+    const existingFixes = this.fixedIssues.get(auditId)!;
+    const alreadyFixed = existingFixes.some(fix => 
+      fix.issueType === issueType && fix.issueUrl === issueUrl
+    );
+    
+    if (!alreadyFixed) {
+      existingFixes.push({
+        issueType,
+        issueUrl,
+        fixedAt: new Date()
+      });
+    }
+  }
+
+  async getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>> {
+    return this.fixedIssues.get(auditId) || [];
+  }
 }
 
 export const storage = new MemStorage();

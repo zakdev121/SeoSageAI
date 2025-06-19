@@ -227,6 +227,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wpService = new WordPressService('https://synviz.com');
       const result = await wpService.applySEOFix(fix);
       
+      // If fix was successfully applied, mark it as fixed
+      if (result.success) {
+        // Extract the page URL from the fix context
+        const pageUrl = fix.currentValue || fix.postId ? `https://synviz.com/wp-admin/post.php?post=${fix.postId}` : 'unknown';
+        await storage.markIssueAsFixed(auditId, fix.type, pageUrl);
+        console.log(`Marked issue as fixed: ${fix.type} for page ${pageUrl}`);
+      }
+      
       res.json(result);
     } catch (error) {
       console.error('Error applying SEO fix:', error);
@@ -488,8 +496,8 @@ async function processAudit(auditId: number, url: string, industry: string, emai
       }
     }
     
-    // 6. Analyze and create issues list
-    const directIssues = await analyzeIssues(enhancedPages);
+    // 6. Analyze and create issues list (filter out fixed issues)
+    const directIssues = await analyzeIssues(enhancedPages, auditId);
     const issues = [...directIssues, ...gscBasedIssues];
     
     // 7. Calculate SEO score
@@ -539,80 +547,106 @@ async function processAudit(auditId: number, url: string, industry: string, emai
   }
 }
 
-async function analyzeIssues(pages: any[]) {
+async function analyzeIssues(pages: any[], auditId?: number) {
   const issues = [];
+  let fixedIssues: Array<{issueType: string, issueUrl: string, fixedAt: Date}> = [];
+  
+  if (auditId) {
+    fixedIssues = await storage.getFixedIssues(auditId);
+  }
+
+  // Helper function to check if issue is already fixed
+  const isIssueFixed = (issueType: string, pageUrl: string) => {
+    return fixedIssues.some(fix => 
+      fix.issueType === issueType && fix.issueUrl === pageUrl
+    );
+  };
 
   for (const page of pages) {
     // Missing meta descriptions
     if (!page.metaDescription) {
-      issues.push({
-        type: 'Missing Meta Description',
-        severity: 'critical' as const,
-        message: `Page ${page.url} is missing a meta description`,
-        page: page.url
-      });
+      if (!isIssueFixed('Missing Meta Description', page.url)) {
+        issues.push({
+          type: 'Missing Meta Description',
+          severity: 'critical' as const,
+          message: `Page ${page.url} is missing a meta description`,
+          page: page.url
+        });
+      }
     }
 
     // Missing title
     if (!page.title) {
-      issues.push({
-        type: 'Missing Title Tag',
-        severity: 'critical' as const,
-        message: `Page ${page.url} is missing a title tag`,
-        page: page.url
-      });
+      if (!isIssueFixed('Missing Title Tag', page.url)) {
+        issues.push({
+          type: 'Missing Title Tag',
+          severity: 'critical' as const,
+          message: `Page ${page.url} is missing a title tag`,
+          page: page.url
+        });
+      }
     }
 
     // Long title tags
     if (page.title && page.title.length > 60) {
-      issues.push({
-        type: 'Long Title Tag',
-        severity: 'medium' as const,
-        message: `Page ${page.url} has a title tag that's ${page.title.length} characters (recommended: under 60)`,
-        page: page.url
-      });
+      if (!isIssueFixed('Long Title Tag', page.url)) {
+        issues.push({
+          type: 'Long Title Tag',
+          severity: 'medium' as const,
+          message: `Page ${page.url} has a title tag that's ${page.title.length} characters (recommended: under 60)`,
+          page: page.url
+        });
+      }
     }
 
     // Missing H1
     if (page.h1.length === 0) {
-      issues.push({
-        type: 'Missing H1 Tag',
-        severity: 'medium' as const,
-        message: `Page ${page.url} is missing an H1 tag`,
-        page: page.url
-      });
+      if (!isIssueFixed('Missing H1 Tag', page.url)) {
+        issues.push({
+          type: 'Missing H1 Tag',
+          severity: 'medium' as const,
+          message: `Page ${page.url} is missing an H1 tag`,
+          page: page.url
+        });
+      }
     }
 
     // Multiple H1s
     if (page.h1.length > 1) {
-      issues.push({
-        type: 'Multiple H1 Tags',
-        severity: 'low' as const,
-        message: `Page ${page.url} has ${page.h1.length} H1 tags (recommended: 1)`,
-        page: page.url
-      });
+      if (!isIssueFixed('Multiple H1 Tags', page.url)) {
+        issues.push({
+          type: 'Multiple H1 Tags',
+          severity: 'low' as const,
+          message: `Page ${page.url} has ${page.h1.length} H1 tags (recommended: 1)`,
+          page: page.url
+        });
+      }
     }
 
     // Missing alt text
     const missingAlt = page.images.filter((img: any) => !img.alt).length;
     if (missingAlt > 0) {
-      issues.push({
-        type: 'Missing Alt Text',
-        severity: 'low' as const,
-        message: `${missingAlt} images are missing alt text on ${page.url}`,
-        page: page.url,
-        count: missingAlt
-      });
+      if (!isIssueFixed('Missing Alt Text', page.url)) {
+        issues.push({
+          type: 'Missing Alt Text',
+          severity: 'low' as const,
+          message: `${missingAlt} images are missing alt text on ${page.url}`,
+          page: page.url,
+          count: missingAlt
+        });
+      }
     }
 
     // Thin content
     if (page.wordCount < 300) {
-      issues.push({
-        type: 'Thin Content',
-        severity: 'medium' as const,
-        message: `Page ${page.url} has only ${page.wordCount} words (recommended: 300+)`,
-        page: page.url
-      });
+      if (!isIssueFixed('Thin Content', page.url)) {
+        issues.push({
+          type: 'Thin Content',
+          severity: 'medium' as const,
+          message: `Page ${page.url} has only ${page.wordCount} words (recommended: 300+)`,
+          page: page.url
+        });
+      }
     }
   }
 
