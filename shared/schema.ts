@@ -89,6 +89,43 @@ export const AIRecommendation = z.object({
   content: z.string().optional(),
 });
 
+export const PageSpeedData = z.object({
+  url: z.string(),
+  performanceScore: z.number(),
+  accessibilityScore: z.number(),
+  bestPracticesScore: z.number(),
+  seoScore: z.number(),
+  firstContentfulPaint: z.number(),
+  largestContentfulPaint: z.number(),
+  cumulativeLayoutShift: z.number(),
+  opportunities: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string(),
+    savings: z.number()
+  })),
+  diagnostics: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string(),
+    displayValue: z.string()
+  }))
+});
+
+export const CompetitorData = z.object({
+  domain: z.string(),
+  title: z.string(),
+  snippet: z.string(),
+  ranking: z.number()
+});
+
+export const KeywordLandscape = z.object({
+  keyword: z.string(),
+  topDomains: z.array(z.string()),
+  searchVolume: z.enum(['high', 'medium', 'low']),
+  competition: z.enum(['high', 'medium', 'low'])
+});
+
 export const AuditResults = z.object({
   url: z.string(),
   industry: z.string(),
@@ -109,6 +146,9 @@ export const AuditResults = z.object({
     competition: z.enum(["low", "medium", "high"]),
   })),
   aiRecommendations: z.array(AIRecommendation),
+  pageSpeedData: PageSpeedData.optional(),
+  competitors: z.array(CompetitorData).optional(),
+  keywordLandscape: z.array(KeywordLandscape).optional()
 });
 
 export type PageDataType = z.infer<typeof PageData>;
@@ -116,4 +156,7 @@ export type GSCDataType = z.infer<typeof GSCData>;
 export type KeywordOpportunityType = z.infer<typeof KeywordOpportunity>;
 export type SEOIssueType = z.infer<typeof SEOIssue>;
 export type AIRecommendationType = z.infer<typeof AIRecommendation>;
+export type PageSpeedDataType = z.infer<typeof PageSpeedData>;
+export type CompetitorDataType = z.infer<typeof CompetitorData>;
+export type KeywordLandscapeType = z.infer<typeof KeywordLandscape>;
 export type AuditResultsType = z.infer<typeof AuditResults>;
