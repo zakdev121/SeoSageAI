@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import https from 'https';
 import { PageDataType } from '@shared/schema';
 
 // Use stealth plugin to avoid detection
@@ -183,40 +184,34 @@ export class CrawlerService {
   }
 
   private async crawlSynvizWithRetries(url: string): Promise<PageDataType> {
-    const maxRetries = 3;
-    const delays = [2000, 5000, 10000]; // Progressive delays
+    console.log(`Attempting direct crawl of synviz.com with extended timeout...`);
     
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      console.log(`Synviz crawl attempt ${attempt + 1}/${maxRetries}`);
+    // Use simple axios with extended timeout
+    try {
+      const response = await axios.get(url, {
+        timeout: 45000,
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5'
+        }
+      });
       
+      console.log(`Successfully retrieved synviz.com with HTTP`);
+      return await this.parseHTML(response.data, url, 'http');
+    } catch (httpError: any) {
+      console.warn(`HTTP failed for synviz.com: ${httpError.message}`);
+      
+      // Try browser as fallback
       try {
-        // Try multiple methods in sequence
-        const methods = [
-          () => this.tryHTTPWithLongTimeout(url),
-          () => this.tryBrowserWithSpecialHandling(url),
-          () => this.tryAlternativeHTTP(url)
-        ];
-        
-        for (const method of methods) {
-          try {
-            return await method();
-          } catch (error: any) {
-            console.warn(`Method failed: ${error.message}`);
-            continue;
-          }
-        }
-        
-      } catch (error: any) {
-        console.warn(`Attempt ${attempt + 1} failed: ${error.message}`);
-        
-        if (attempt < maxRetries - 1) {
-          console.log(`Waiting ${delays[attempt]}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-        }
+        console.log(`Trying browser method for synviz.com...`);
+        const html = await this.tryBrowserWithSpecialHandling(url);
+        return html;
+      } catch (browserError: any) {
+        console.warn(`Browser also failed for synviz.com: ${browserError.message}`);
+        throw new Error(`All synviz.com crawling methods failed`);
       }
     }
-    
-    throw new Error('All synviz.com crawling methods exhausted');
   }
 
   private async tryHTTPWithLongTimeout(url: string): Promise<PageDataType> {
@@ -230,7 +225,7 @@ export class CrawlerService {
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache'
       },
-      httpsAgent: new (require('https').Agent)({
+      httpsAgent: new https.Agent({
         keepAlive: true,
         timeout: 30000,
         maxSockets: 1
@@ -284,7 +279,7 @@ export class CrawlerService {
         'Accept': '*/*',
         'Accept-Encoding': 'identity'
       },
-      httpsAgent: new (require('https').Agent)({
+      httpsAgent: new https.Agent({
         rejectUnauthorized: false,
         timeout: 20000
       })
@@ -309,7 +304,7 @@ export class CrawlerService {
           'Upgrade-Insecure-Requests': '1',
           'Cache-Control': 'no-cache'
         },
-        httpsAgent: new (require('https').Agent)({
+        httpsAgent: new https.Agent({
           keepAlive: true,
           timeout: httpTimeout
         })
