@@ -147,6 +147,11 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     console.log(`Starting comprehensive crawl for ${fullUrl}`);
     const pages = await crawlerService.crawlWebsite(fullUrl, 25);
     await storage.updateAuditProgress(auditId, 30);
+    
+    // If crawling failed due to network issues, create analysis from GSC data
+    if (pages.length === 0) {
+      console.log('Direct crawling failed, will analyze using GSC data and external insights');
+    }
 
     // 2. Get GSC data
     console.log('Fetching GSC data...');

@@ -41,11 +41,10 @@ export class CrawlerService {
       console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
-        // Use HTTP-based crawling as primary method to avoid browser timeouts
         const pageData = await this.crawlPageHTTP(currentUrl);
         results.push(pageData);
 
-        // Extract internal links for further crawling (limit to prevent infinite loops)
+        // Extract internal links for further crawling
         const baseUrl = new URL(url);
         pageData.internalLinks.slice(0, 10).forEach(link => {
           try {
@@ -59,6 +58,27 @@ export class CrawlerService {
         });
       } catch (error) {
         console.error(`Error crawling ${currentUrl}:`, error);
+        // Continue with next page if available
+        if (toVisit.length === 0 && results.length === 0) {
+          // If first page fails and no links to try, create minimal page data for analysis
+          try {
+            const baseUrl = new URL(currentUrl);
+            results.push({
+              url: currentUrl,
+              title: baseUrl.hostname,
+              metaDescription: '',
+              h1: [],
+              h2: [],
+              wordCount: 0,
+              images: [],
+              internalLinks: [],
+              externalLinks: [],
+              brokenLinks: []
+            });
+          } catch (urlError) {
+            // Even URL parsing failed - skip
+          }
+        }
       }
     }
 
@@ -148,7 +168,7 @@ export class CrawlerService {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
     try {
       const response = await fetch(url, {

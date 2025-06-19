@@ -1,0 +1,88 @@
+import puppeteer from 'puppeteer';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { head } from 'axios';
+
+type SEOAudit = {
+  source: 'browser' | 'http';
+  title?: string;
+  metaDescription?: string;
+  h1Tags?: string[];
+  h2Tags?: string[];
+  missingAltTags?: string[];
+  brokenLinks?: string[];
+  error?: string;
+};
+
+export const crawlPage = async (url: string): Promise<SEOAudit> => {
+  try {
+    const html = await getHTMLWithPuppeteer(url);
+    return parseHTML(html, 'browser');
+  } catch (browserError) {
+    console.warn(`[Browser failed] ${browserError.message}`);
+    try {
+      const { data: html } = await axios.get(url, {
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (SynvizBot)' }
+      });
+      return parseHTML(html, 'http');
+    } catch (httpError) {
+      return {
+        source: 'http',
+        error: `HTTP fallback failed: ${httpError.message}`
+      };
+    }
+  }
+};
+
+// --- Puppeteer loader ---
+const getHTMLWithPuppeteer = async (url: string): Promise<string> => {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (SynvizBot)');
+  await page.goto(url, { timeout: 15000 });
+  const html = await page.content();
+  await browser.close();
+  return html;
+};
+
+// --- Core SEO parser ---
+const parseHTML = async (html: string, source: 'browser' | 'http'): Promise<SEOAudit> => {
+  const $ = cheerio.load(html);
+
+  const h1Tags = $('h1').map((i, el) => $(el).text().trim()).get();
+  const h2Tags = $('h2').map((i, el) => $(el).text().trim()).get();
+  const missingAltTags = $('img').filter((i, el) => !$(el).attr('alt')).map((i, el) => $(el).attr('src') || '').get();
+
+  const links = $('a[href]').map((i, el) => $(el).attr('href')).get();
+  const absoluteLinks = links.filter(href => href?.startsWith('http'));
+  const brokenLinks = await checkBrokenLinks(absoluteLinks);
+
+  return {
+    source,
+    title: $('title').text() || '',
+    metaDescription: $('meta[name="description"]').attr('content') || '',
+    h1Tags,
+    h2Tags,
+    missingAltTags,
+    brokenLinks
+  };
+};
+
+// --- Broken link checker (HEAD request) ---
+const checkBrokenLinks = async (urls: string[]): Promise<string[]> => {
+  const results = await Promise.all(urls.map(async (link) => {
+    try {
+      const res = await axios.head(link, { timeout: 5000 });
+      return res.status >= 400 ? link : null;
+    } catch {
+      return link;
+    }
+  }));
+
+  return results.filter(Boolean) as string[];
+};
