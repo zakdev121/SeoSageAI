@@ -7,6 +7,8 @@ export interface WordPressPost {
   content: { rendered: string };
   excerpt: { rendered: string };
   slug: string;
+  link?: string;
+  guid?: { rendered: string };
   yoast_head?: string;
   yoast_head_json?: {
     title?: string;

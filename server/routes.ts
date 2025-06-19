@@ -13,6 +13,7 @@ import { IssueResolverService } from "./services/issue-resolver";
 import { BlogWriterService } from "./services/blog-writer";
 import { WordPressService } from "./services/wordpress-api";
 import { issueTracker } from "./services/issue-tracker";
+import { htmlIntegrityService } from "./services/html-integrity";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -172,6 +173,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error generating quick wins:', error);
       res.status(500).json({ error: 'Failed to generate quick wins' });
+    }
+  });
+
+  // Test HTML integrity
+  app.post("/api/test-html-integrity", async (req, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+      }
+
+      const report = await htmlIntegrityService.checkPageIntegrity(url);
+      
+      res.json({
+        url,
+        integrity: report,
+        summary: {
+          isValid: report.isValid,
+          criticalErrors: report.criticalErrors.length,
+          warnings: report.warnings.length,
+          metaTagsCount: report.metaTagsCount
+        }
+      });
+    } catch (error: any) {
+      console.error('Error checking HTML integrity:', error);
+      res.status(500).json({ error: 'Failed to check HTML integrity' });
     }
   });
 
