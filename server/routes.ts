@@ -295,6 +295,12 @@ async function analyzeIssues(pages: any[]) {
 }
 
 function calculateSEOScore(pages: any[], issues: any[]): number {
+  // Handle edge case of no pages crawled
+  if (!pages || pages.length === 0) {
+    console.log('SEO Score calculation: No pages crawled, returning minimum score');
+    return 15; // Minimum score when no pages are available
+  }
+  
   let totalScore = 100;
   
   // Count issues by severity

@@ -61,6 +61,7 @@ export class CrawlerService {
         });
       } catch (error) {
         console.error(`Error crawling ${currentUrl}:`, error);
+        // Continue with next page instead of failing completely
       }
     }
 
@@ -72,7 +73,10 @@ export class CrawlerService {
     const page = await this.browser!.newPage();
     
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      // Set user agent to avoid blocking
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       const html = await page.content();
       const $ = cheerio.load(html);
 
