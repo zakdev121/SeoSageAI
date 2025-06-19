@@ -216,40 +216,78 @@ export class WordPressService {
 
   async updatePostMetaDescription(postId: number, metaDescription: string): Promise<boolean> {
     try {
-      console.log(`Attempting meta description update for post ${postId}`);
+      console.log(`Updating meta description for post ${postId}`);
       
-      // Test custom plugin endpoint
-      try {
-        const customUpdateResponse = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
-          {
-            post_id: postId,
-            meta_description: metaDescription
-          },
-          { headers: this.getAuthHeaders() }
-        );
-        
-        console.log(`✓ Plugin meta update successful:`, customUpdateResponse.data);
-        return true;
-      } catch (customError: any) {
-        const errorCode = customError.response?.data?.code;
-        console.log(`Plugin endpoint failed: ${errorCode}`);
-        
-        if (errorCode === 'rest_forbidden') {
-          console.log(`The plugin requires updating with the new credential format: SEO_Audit_tool:`);
-          console.log(`Update your plugin permission callback to check for 'SEO_Audit_tool:' instead of 'SEO Audit Tool:'`);
-        }
-      }
+      const updateResponse = await axios.post(
+        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
+        {
+          post_id: postId,
+          update: {
+            meta: {
+              "_yoast_wpseo_metadesc": metaDescription
+            }
+          }
+        },
+        { headers: this.getAuthHeaders() }
+      );
       
-      // Demonstrate the fix functionality
-      console.log(`✓ Meta description would be updated for post ${postId}`);
-      console.log(`New value: "${metaDescription}"`);
-      console.log(`Once plugin authentication is fixed, this will update the actual Yoast SEO meta field`);
-      
+      console.log(`✓ Meta description updated successfully:`, updateResponse.data);
       return true;
       
     } catch (error: any) {
-      console.error(`Update failed for post ${postId}:`, error.response?.data?.message || error.message);
+      console.error(`Meta description update failed for post ${postId}:`, error.response?.data?.message || error.message);
+      return false;
+    }
+  }
+
+  async applyComprehensiveSEOFix(postId: number, updates: {
+    title?: string;
+    metaDescription?: string;
+    focusKeyword?: string;
+    content?: string;
+  }): Promise<boolean> {
+    try {
+      console.log(`Applying comprehensive SEO fixes to post ${postId}`);
+      
+      const updatePayload: any = {
+        post_id: postId,
+        update: {}
+      };
+
+      if (updates.title) {
+        updatePayload.update.title = updates.title;
+      }
+
+      if (updates.content) {
+        updatePayload.update.content = updates.content;
+      }
+
+      const metaUpdates: any = {};
+      if (updates.metaDescription) {
+        metaUpdates._yoast_wpseo_metadesc = updates.metaDescription;
+      }
+      if (updates.focusKeyword) {
+        metaUpdates._yoast_wpseo_focuskw = updates.focusKeyword;
+      }
+      if (updates.title) {
+        metaUpdates._yoast_wpseo_title = updates.title;
+      }
+
+      if (Object.keys(metaUpdates).length > 0) {
+        updatePayload.update.meta = metaUpdates;
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
+        updatePayload,
+        { headers: this.getAuthHeaders() }
+      );
+
+      console.log(`✓ Comprehensive SEO fixes applied:`, response.data);
+      return true;
+      
+    } catch (error: any) {
+      console.error(`Comprehensive SEO fix failed for post ${postId}:`, error.response?.data?.message || error.message);
       return false;
     }
   }
