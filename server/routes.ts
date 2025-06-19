@@ -302,18 +302,23 @@ function calculateSEOScore(pages: any[], issues: any[]): number {
   const mediumIssues = issues.filter(i => i.severity === 'medium').length;
   const lowIssues = issues.filter(i => i.severity === 'low').length;
   
+  console.log(`SEO Score calculation: Critical: ${criticalIssues}, Medium: ${mediumIssues}, Low: ${lowIssues}`);
+  
   totalScore -= (criticalIssues * 10);
   totalScore -= (mediumIssues * 5);
   totalScore -= (lowIssues * 2);
   
   // Bonus points for good practices
-  const pagesWithTitles = pages.filter(p => p.title).length;
-  const pagesWithMeta = pages.filter(p => p.metaDescription).length;
-  const pagesWithH1 = pages.filter(p => p.h1.length > 0).length;
+  const pagesWithTitles = pages.filter(p => p.title && p.title.trim().length > 0).length;
+  const pagesWithMeta = pages.filter(p => p.metaDescription && p.metaDescription.trim().length > 0).length;
+  const pagesWithH1 = pages.filter(p => p.h1 && p.h1.length > 0).length;
   
   if (pagesWithTitles === pages.length) totalScore += 5;
   if (pagesWithMeta === pages.length) totalScore += 5;
   if (pagesWithH1 === pages.length) totalScore += 3;
   
-  return Math.max(0, Math.min(100, Math.round(totalScore)));
+  const finalScore = Math.max(0, Math.min(100, Math.round(totalScore)));
+  console.log(`Final SEO Score: ${finalScore} (started at 100, deducted ${100 - totalScore} points)`);
+  
+  return finalScore;
 }
