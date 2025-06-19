@@ -173,10 +173,14 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
         <Tabs defaultValue="overview" className="w-full">
           <div className="border-b border-slate-200">
             <div className="px-6">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview" className="flex items-center space-x-2">
                   <i className="fas fa-chart-line"></i>
                   <span>Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="performance" className="flex items-center space-x-2">
+                  <i className="fas fa-tachometer-alt"></i>
+                  <span>Performance</span>
                 </TabsTrigger>
                 <TabsTrigger value="technical" className="flex items-center space-x-2">
                   <i className="fas fa-cog"></i>
@@ -322,6 +326,129 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                   </Table>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="performance" className="space-y-6">
+              {results.pageSpeedData ? (
+                <div className="space-y-6">
+                  {/* Performance Scores */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+                      <i className="fas fa-tachometer-alt text-primary mr-2"></i>
+                      PageSpeed Insights Scores
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <div className={`text-2xl font-bold ${results.pageSpeedData.performanceScore >= 90 ? 'text-green-600' : results.pageSpeedData.performanceScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {results.pageSpeedData.performanceScore}
+                        </div>
+                        <div className="text-sm text-slate-600">Performance</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <div className={`text-2xl font-bold ${results.pageSpeedData.accessibilityScore >= 90 ? 'text-green-600' : results.pageSpeedData.accessibilityScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {results.pageSpeedData.accessibilityScore}
+                        </div>
+                        <div className="text-sm text-slate-600">Accessibility</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <div className={`text-2xl font-bold ${results.pageSpeedData.bestPracticesScore >= 90 ? 'text-green-600' : results.pageSpeedData.bestPracticesScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {results.pageSpeedData.bestPracticesScore}
+                        </div>
+                        <div className="text-sm text-slate-600">Best Practices</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <div className={`text-2xl font-bold ${results.pageSpeedData.seoScore >= 90 ? 'text-green-600' : results.pageSpeedData.seoScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {results.pageSpeedData.seoScore}
+                        </div>
+                        <div className="text-sm text-slate-600">SEO</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Core Web Vitals */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Core Web Vitals</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-slate-50 rounded-lg p-4">
+                        <div className="text-sm text-slate-600 mb-1">First Contentful Paint</div>
+                        <div className="text-xl font-bold text-slate-900">
+                          {(results.pageSpeedData.firstContentfulPaint / 1000).toFixed(2)}s
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4">
+                        <div className="text-sm text-slate-600 mb-1">Largest Contentful Paint</div>
+                        <div className="text-xl font-bold text-slate-900">
+                          {(results.pageSpeedData.largestContentfulPaint / 1000).toFixed(2)}s
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4">
+                        <div className="text-sm text-slate-600 mb-1">Cumulative Layout Shift</div>
+                        <div className="text-xl font-bold text-slate-900">
+                          {results.pageSpeedData.cumulativeLayoutShift.toFixed(3)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Performance Opportunities */}
+                  {results.pageSpeedData.opportunities.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Performance Opportunities</h3>
+                      <div className="space-y-3">
+                        {results.pageSpeedData.opportunities.slice(0, 5).map((opportunity, index) => (
+                          <div key={index} className="flex items-start space-x-3 p-4 bg-amber-50 rounded-lg">
+                            <i className="fas fa-lightbulb text-amber-600 mt-0.5"></i>
+                            <div className="flex-1">
+                              <p className="font-medium text-slate-900">{opportunity.title}</p>
+                              <p className="text-sm text-slate-600">{opportunity.description}</p>
+                              <p className="text-sm text-amber-700 font-medium mt-1">
+                                Potential savings: {opportunity.savings}s
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Competitors Analysis */}
+                  {results.competitors && results.competitors.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Competitor Landscape</h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Domain</TableHead>
+                              <TableHead>Title</TableHead>
+                              <TableHead>Average Ranking</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {results.competitors.slice(0, 8).map((competitor, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">{competitor.domain}</TableCell>
+                                <TableCell className="max-w-xs truncate">{competitor.title}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-blue-100 text-blue-800">
+                                    #{competitor.ranking}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <i className="fas fa-info-circle text-slate-400 text-3xl mb-4"></i>
+                  <p className="text-slate-600">Performance data requires Google API keys to be configured.</p>
+                  <p className="text-sm text-slate-500 mt-2">Contact your administrator to enable PageSpeed Insights analysis.</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="keywords">

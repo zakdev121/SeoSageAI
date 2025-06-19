@@ -7,6 +7,8 @@ import { GSCService } from "./services/gsc";
 import { KeywordService } from "./services/keywords";
 import { AIService } from "./services/ai";
 import { ReportService } from "./services/report";
+import { PageSpeedService } from "./services/pagespeed";
+import { CustomSearchService } from "./services/customsearch";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -133,6 +135,8 @@ async function processAudit(auditId: number, url: string, industry: string, emai
   const keywordService = new KeywordService();
   const aiService = new AIService();
   const reportService = new ReportService();
+  const pageSpeedService = new PageSpeedService();
+  const customSearchService = new CustomSearchService();
   // const emailService = new EmailService(); // Disabled for now
 
   try {
@@ -163,7 +167,19 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     const keywordData = await keywordService.performKeywordResearch(domainUrl, industry);
     await storage.updateAuditProgress(auditId, 70);
 
-    // 4. Generate AI recommendations
+    // 4. Get PageSpeed Insights data
+    console.log('Analyzing performance with PageSpeed Insights...');
+    const pageSpeedData = await pageSpeedService.analyzePerformance(fullUrl);
+    await storage.updateAuditProgress(auditId, 75);
+
+    // 5. Analyze competitor landscape
+    console.log('Analyzing competitor landscape...');
+    const primaryKeywords = keywordData.opportunities.slice(0, 5).map(kw => kw.keyword);
+    const competitors = await customSearchService.searchCompetitors(industry, primaryKeywords);
+    const keywordLandscape = await customSearchService.analyzeKeywordLandscape(primaryKeywords);
+    await storage.updateAuditProgress(auditId, 80);
+
+    // 6. Generate AI recommendations
     console.log('Generating AI recommendations...');
     const aiRecommendations = await aiService.generateRecommendations(
       pages, 
@@ -235,7 +251,10 @@ async function processAudit(auditId: number, url: string, industry: string, emai
       issues,
       keywordOpportunities: keywordData.opportunities,
       longtailKeywords: keywordData.longtailKeywords,
-      aiRecommendations
+      aiRecommendations,
+      pageSpeedData: pageSpeedData || undefined,
+      competitors: competitors || undefined,
+      keywordLandscape: keywordLandscape || undefined
     });
 
     // Save results
