@@ -41,17 +41,18 @@ export class CrawlerService {
       if (visited.has(currentUrl)) continue;
       
       visited.add(currentUrl);
+      console.log(`Crawling page ${results.length + 1}/${maxPages}: ${currentUrl}`);
       
       try {
         const pageData = await this.crawlPage(currentUrl);
         results.push(pageData);
 
-        // Extract internal links for further crawling
+        // Extract internal links for further crawling (limit to prevent infinite loops)
         const baseUrl = new URL(url);
-        pageData.internalLinks.forEach(link => {
+        pageData.internalLinks.slice(0, 10).forEach(link => {
           try {
             const linkUrl = new URL(link, baseUrl);
-            if (linkUrl.hostname === baseUrl.hostname && !visited.has(linkUrl.href) && toVisit.length < maxPages) {
+            if (linkUrl.hostname === baseUrl.hostname && !visited.has(linkUrl.href) && toVisit.length < maxPages * 2) {
               toVisit.push(linkUrl.href);
             }
           } catch (e) {
@@ -63,6 +64,7 @@ export class CrawlerService {
       }
     }
 
+    console.log(`Crawl completed: ${results.length} pages analyzed`);
     return results;
   }
 
