@@ -1,0 +1,118 @@
+import { google } from 'googleapis';
+import { GSCDataType } from '@shared/schema';
+
+export class GSCService {
+  private searchConsole: any;
+
+  constructor() {
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}'),
+      scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
+    });
+
+    this.searchConsole = google.searchconsole({ version: 'v1', auth });
+  }
+
+  async getSearchConsoleData(siteUrl: string): Promise<GSCDataType | null> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90); // Last 90 days
+
+      // Get overall performance data
+      const performanceResponse = await this.searchConsole.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          dimensions: ['query'],
+          rowLimit: 100
+        }
+      });
+
+      // Get page performance data
+      const pageResponse = await this.searchConsole.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          dimensions: ['page'],
+          rowLimit: 50
+        }
+      });
+
+      const queryData = performanceResponse.data.rows || [];
+      const pageData = pageResponse.data.rows || [];
+
+      // Calculate totals
+      const totalClicks = queryData.reduce((sum, row) => sum + (row.clicks || 0), 0);
+      const totalImpressions = queryData.reduce((sum, row) => sum + (row.impressions || 0), 0);
+      const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      const avgPosition = queryData.length > 0 
+        ? queryData.reduce((sum, row) => sum + (row.position || 0), 0) / queryData.length 
+        : 0;
+
+      // Format top queries
+      const topQueries = queryData.slice(0, 20).map(row => ({
+        query: row.keys?.[0] || '',
+        clicks: row.clicks || 0,
+        impressions: row.impressions || 0,
+        ctr: row.ctr ? row.ctr * 100 : 0,
+        position: row.position || 0
+      }));
+
+      // Format top pages
+      const topPages = pageData.slice(0, 20).map(row => ({
+        page: row.keys?.[0] || '',
+        clicks: row.clicks || 0,
+        impressions: row.impressions || 0,
+        ctr: row.ctr ? row.ctr * 100 : 0,
+        position: row.position || 0
+      }));
+
+      return {
+        totalClicks,
+        totalImpressions,
+        avgCTR: Math.round(avgCTR * 100) / 100,
+        avgPosition: Math.round(avgPosition * 100) / 100,
+        topQueries,
+        topPages
+      };
+    } catch (error) {
+      console.error('Error fetching GSC data:', error);
+      return null;
+    }
+  }
+
+  async getOpportunityKeywords(siteUrl: string): Promise<any[]> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+
+      const response = await this.searchConsole.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          dimensions: ['query'],
+          rowLimit: 1000
+        }
+      });
+
+      const rows = response.data.rows || [];
+      
+      // Filter for opportunity keywords (position 10-30 or high impressions with low CTR)
+      return rows.filter(row => {
+        const position = row.position || 0;
+        const ctr = row.ctr || 0;
+        const impressions = row.impressions || 0;
+        
+        return (position >= 10 && position <= 30) || (impressions > 100 && ctr < 0.05);
+      }).slice(0, 50);
+    } catch (error) {
+      console.error('Error fetching opportunity keywords:', error);
+      return [];
+    }
+  }
+}
