@@ -70,7 +70,7 @@ export class CrawlerService {
     const page = await this.browser!.newPage();
     
     try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const html = await page.content();
       const $ = cheerio.load(html);
 
