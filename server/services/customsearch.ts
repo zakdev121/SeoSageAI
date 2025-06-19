@@ -31,18 +31,44 @@ export class CustomSearchService {
 
     const competitors: CompetitorData[] = [];
     
+    // Define synviz.com-specific competitor search queries
+    const competitorQueries = [
+      "data visualization tools business intelligence",
+      "dashboard software analytics platform", 
+      "business data visualization solutions"
+    ];
+    
     try {
-      for (const keyword of primaryKeywords.slice(0, 3)) { // Limit to top 3 keywords
-        const results = await this.performSearch(`${keyword} ${industry}`);
+      for (const query of competitorQueries) {
+        const results = await this.performSearch(query);
         
         results.forEach((result, index) => {
           const domain = new URL(result.link).hostname;
-          competitors.push({
-            domain,
-            title: result.title,
-            snippet: result.snippet,
-            ranking: index + 1
-          });
+          
+          // Filter for actual data visualization/BI competitors
+          const isRelevantCompetitor = 
+            domain.includes('tableau.com') ||
+            domain.includes('powerbi.microsoft.com') ||
+            domain.includes('qlik.com') ||
+            domain.includes('looker.com') ||
+            domain.includes('sisense.com') ||
+            domain.includes('domo.com') ||
+            domain.includes('grafana.com') ||
+            domain.includes('plotly.com') ||
+            domain.includes('metabase.com') ||
+            result.title.toLowerCase().includes('dashboard') ||
+            result.title.toLowerCase().includes('visualization') ||
+            result.title.toLowerCase().includes('analytics') ||
+            result.snippet.toLowerCase().includes('business intelligence');
+            
+          if (isRelevantCompetitor && !domain.includes('synviz.com')) {
+            competitors.push({
+              domain,
+              title: result.title,
+              snippet: result.snippet,
+              ranking: index + 1
+            });
+          }
         });
       }
 
@@ -51,7 +77,7 @@ export class CustomSearchService {
         new Map(competitors.map(c => [c.domain, c])).values()
       );
 
-      return uniqueCompetitors.slice(0, 10);
+      return uniqueCompetitors.slice(0, 8);
     } catch (error: any) {
       console.error('Custom Search API error:', error.message);
       return [];
