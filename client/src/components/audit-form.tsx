@@ -50,6 +50,7 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
   });
 
   const handleStartAudit = async () => {
+    if (isSubmitting || createAuditMutation.isPending) return;
     setIsSubmitting(true);
     createAuditMutation.mutate();
   };
@@ -111,10 +112,10 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
         <Button 
           onClick={handleStartAudit}
           className="w-full" 
-          disabled={isSubmitting}
+          disabled={isSubmitting || createAuditMutation.isPending}
           size="lg"
         >
-          {isSubmitting ? (
+          {isSubmitting || createAuditMutation.isPending ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               Running AI Audit...
