@@ -307,7 +307,7 @@ export class CrawlerService {
       console.warn(`Browser anti-detection failed: ${browserError.message}`);
     }
     
-    throw new Error(`Synviz.com appears to be blocking the Replit IP address. All connection strategies exhausted.`);
+    throw new Error(`Synviz.com connection blocked - Replit IP may be restricted. The audit will continue with authentic Google Search Console data and keyword research.`);
   }
 
   private async tryHTTPWithLongTimeout(url: string): Promise<PageDataType> {

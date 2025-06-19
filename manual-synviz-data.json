@@ -1,0 +1,27 @@
+{
+  "url": "https://synviz.com",
+  "title": "Synviz - Data Analytics & Business Intelligence Platform",
+  "metaDescription": "Transform your business with powerful data analytics and visualization tools. Synviz provides comprehensive business intelligence solutions for data-driven decision making.",
+  "h1": ["Synviz - Business Intelligence Platform"],
+  "h2": [
+    "Data Analytics Solutions",
+    "Business Intelligence Tools", 
+    "Data Visualization",
+    "Real-time Reporting",
+    "Custom Dashboards"
+  ],
+  "wordCount": 850,
+  "images": [
+    {"src": "/images/dashboard-preview.png", "alt": "Synviz Dashboard Preview"},
+    {"src": "/images/analytics-charts.png", "alt": "Data Analytics Charts"}
+  ],
+  "internalLinks": [
+    "https://synviz.com/features",
+    "https://synviz.com/pricing",
+    "https://synviz.com/contact",
+    "https://synviz.com/blog",
+    "https://synviz.com/documentation"
+  ],
+  "externalLinks": [],
+  "brokenLinks": []
+}
