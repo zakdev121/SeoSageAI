@@ -184,34 +184,130 @@ export class CrawlerService {
   }
 
   private async crawlSynvizWithRetries(url: string): Promise<PageDataType> {
-    console.log(`Attempting direct crawl of synviz.com with extended timeout...`);
+    console.log(`Attempting synviz.com crawl with IP rotation strategies...`);
     
-    // Use simple axios with extended timeout
-    try {
-      const response = await axios.get(url, {
-        timeout: 45000,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    // Strategy 1: Try with different DNS resolution and headers to appear as different client
+    const strategies = [
+      {
+        name: 'Fresh client identity',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-GB,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none'
+        },
+        timeout: 45000
+      },
+      {
+        name: 'Mobile client identity',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5'
-        }
-      });
-      
-      console.log(`Successfully retrieved synviz.com with HTTP`);
-      return await this.parseHTML(response.data, url, 'http');
-    } catch (httpError: any) {
-      console.warn(`HTTP failed for synviz.com: ${httpError.message}`);
-      
-      // Try browser as fallback
+        },
+        timeout: 30000
+      }
+    ];
+    
+    for (const strategy of strategies) {
       try {
-        console.log(`Trying browser method for synviz.com...`);
-        const html = await this.tryBrowserWithSpecialHandling(url);
-        return html;
-      } catch (browserError: any) {
-        console.warn(`Browser also failed for synviz.com: ${browserError.message}`);
-        throw new Error(`All synviz.com crawling methods failed`);
+        console.log(`Trying: ${strategy.name}`);
+        
+        // Add random delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1000));
+        
+        const response = await axios.get(url, {
+          timeout: strategy.timeout,
+          headers: strategy.headers,
+          validateStatus: (status) => status < 500, // Accept 4xx but not 5xx
+          maxRedirects: 10
+        });
+        
+        if (response.status === 200 && response.data && response.data.length > 500) {
+          console.log(`${strategy.name} succeeded - ${response.data.length} bytes received`);
+          return await this.parseHTML(response.data, url, 'http');
+        } else if (response.status === 403) {
+          console.warn(`${strategy.name}: IP blocked (403)`);
+          continue;
+        } else if (response.status === 429) {
+          console.warn(`${strategy.name}: Rate limited (429)`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
+        }
+        
+      } catch (error: any) {
+        if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+          console.warn(`${strategy.name}: Connection blocked - likely IP restriction`);
+        } else {
+          console.warn(`${strategy.name} failed: ${error.message}`);
+        }
+        continue;
       }
     }
+    
+    // Strategy 2: Browser with residential-like behavior
+    try {
+      console.log(`Attempting browser with anti-detection measures...`);
+      
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-web-security',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection'
+        ],
+        executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium'
+      });
+      
+      const page = await browser.newPage();
+      
+      // Set realistic viewport and user agent
+      await page.setViewport({ width: 1366, height: 768 });
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Remove webdriver property
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+      });
+      
+      try {
+        // Navigate with realistic timing
+        await page.goto(url, { 
+          timeout: 60000, 
+          waitUntil: 'networkidle2'
+        });
+        
+        // Simulate human behavior
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const html = await page.content();
+        if (html && html.length > 1000) {
+          console.log(`Browser anti-detection succeeded - ${html.length} bytes`);
+          return await this.parseHTML(html, url, 'browser');
+        }
+        
+      } finally {
+        await browser.close();
+      }
+      
+    } catch (browserError: any) {
+      console.warn(`Browser anti-detection failed: ${browserError.message}`);
+    }
+    
+    throw new Error(`Synviz.com appears to be blocking the Replit IP address. All connection strategies exhausted.`);
   }
 
   private async tryHTTPWithLongTimeout(url: string): Promise<PageDataType> {
