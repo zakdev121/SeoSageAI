@@ -31,11 +31,11 @@ export class CustomSearchService {
 
     const competitors: CompetitorData[] = [];
     
-    // Define synviz.com-specific competitor search queries
+    // Define synviz.com-specific competitor search queries for tech services & consulting
     const competitorQueries = [
-      "Tableau Power BI Qlik data visualization",
-      "business intelligence dashboard tools",
-      "data analytics visualization platforms"
+      "AI automation consulting services",
+      "tech staffing IT consulting services", 
+      "technology consulting AI development"
     ];
     
     try {
@@ -45,22 +45,27 @@ export class CustomSearchService {
         results.forEach((result, index) => {
           const domain = new URL(result.link).hostname;
           
-          // Filter for actual data visualization/BI competitors
+          // Filter for tech services, AI consulting, and IT staffing competitors
           const knownCompetitors = [
-            'tableau.com', 'powerbi.microsoft.com', 'qlik.com', 'looker.com',
-            'sisense.com', 'domo.com', 'grafana.com', 'plotly.com', 'metabase.com',
-            'chartio.com', 'mode.com', 'periscope.io', 'thoughtspot.com',
-            'klipfolio.com', 'gooddata.com', 'pentaho.com', 'microstrategy.com'
+            'accenture.com', 'deloitte.com', 'mckinsey.com', 'bcg.com', 'bain.com',
+            'cognizant.com', 'infosys.com', 'tcs.com', 'wipro.com', 'hcl.com',
+            'techsophy.com', 'slalom.com', 'boozallen.com', 'capgemini.com',
+            'avanade.com', 'thoughtworks.com', 'epic.com', 'randstad.com',
+            'adecco.com', 'manpowergroup.com', 'kellyservices.com', 'robert-half.com'
           ];
           
           const isKnownCompetitor = knownCompetitors.some(comp => domain.includes(comp));
           const hasRelevantContent = 
-            result.title.toLowerCase().includes('dashboard') ||
-            result.title.toLowerCase().includes('visualization') ||
-            result.title.toLowerCase().includes('analytics') ||
-            result.title.toLowerCase().includes('business intelligence') ||
-            result.snippet.toLowerCase().includes('data visualization') ||
-            result.snippet.toLowerCase().includes('dashboard');
+            result.title.toLowerCase().includes('consulting') ||
+            result.title.toLowerCase().includes('staffing') ||
+            result.title.toLowerCase().includes('ai services') ||
+            result.title.toLowerCase().includes('technology consulting') ||
+            result.title.toLowerCase().includes('it consulting') ||
+            result.snippet.toLowerCase().includes('tech consulting') ||
+            result.snippet.toLowerCase().includes('ai automation') ||
+            result.snippet.toLowerCase().includes('technology services') ||
+            result.snippet.toLowerCase().includes('it staffing') ||
+            result.snippet.toLowerCase().includes('software consulting');
             
           const isRelevantCompetitor = isKnownCompetitor || hasRelevantContent;
             
@@ -86,27 +91,27 @@ export class CustomSearchService {
       if (uniqueCompetitors.length < 3) {
         const fallbackCompetitors: CompetitorData[] = [
           {
-            domain: 'tableau.com',
-            title: 'Tableau: Business Intelligence and Analytics',
-            snippet: 'Tableau helps people see and understand data with powerful analytics and visualization tools.',
+            domain: 'accenture.com',
+            title: 'Accenture - Technology Consulting & AI Services',
+            snippet: 'Leading technology consulting firm providing AI automation and digital transformation services.',
             ranking: 1
           },
           {
-            domain: 'powerbi.microsoft.com',
-            title: 'Microsoft Power BI - Data Visualization',
-            snippet: 'Transform your company data into rich visuals for you to collect and organize.',
+            domain: 'cognizant.com',
+            title: 'Cognizant - IT Services & Consulting',
+            snippet: 'Technology consulting and IT staffing services with expertise in AI and automation.',
             ranking: 2
           },
           {
-            domain: 'qlik.com',
-            title: 'Qlik Sense - Modern Analytics Platform',
-            snippet: 'Modern analytics platform that enables self-service visual analytics.',
+            domain: 'thoughtworks.com',
+            title: 'ThoughtWorks - Technology Consulting',
+            snippet: 'Software consulting company specializing in agile development and technology solutions.',
             ranking: 3
           },
           {
-            domain: 'looker.com',
-            title: 'Looker - Business Intelligence Platform',
-            snippet: 'Modern BI platform that delivers real-time business intelligence.',
+            domain: 'slalom.com',
+            title: 'Slalom - Technology Consulting',
+            snippet: 'Modern consulting firm focused on strategy, technology, and business transformation.',
             ranking: 4
           }
         ];
