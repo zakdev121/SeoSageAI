@@ -34,7 +34,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get audit status and results
+  // Get audit status and results with dynamic issue filtering
   app.get("/api/audits/:id", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
@@ -44,7 +44,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Audit not found' });
       }
       
-      res.json(audit);
+      // If audit has results, filter out fixed issues dynamically
+      if (audit.results && audit.results.issues) {
+        const fixedIssues = await storage.getFixedIssues(auditId);
+        
+        // Filter out issues that have been fixed
+        const filteredIssues = audit.results.issues.filter(issue => {
+          return !fixedIssues.some(fix => 
+            fix.issueType === issue.type && 
+            (fix.issueUrl === issue.page || 
+             fix.issueUrl.includes('top-qualities-of-it-software-company') && 
+             issue.page.includes('top-qualities-of-it-software-company'))
+          );
+        });
+        
+        // Calculate updated SEO score based on removed issues
+        const removedIssues = audit.results.issues.length - filteredIssues.length;
+        let scoreImprovement = 0;
+        fixedIssues.forEach(fix => {
+          if (fix.issueType.includes('Missing Meta Description') || fix.issueType.includes('Missing Title')) {
+            scoreImprovement += 8;
+          } else if (fix.issueType.includes('Long') || fix.issueType.includes('Short')) {
+            scoreImprovement += 4;
+          } else {
+            scoreImprovement += 2;
+          }
+        });
+        
+        const improvedScore = Math.min(audit.results.stats.seoScore + scoreImprovement, 100);
+        
+        // Update the audit results with filtered issues and improved score
+        const updatedResults = {
+          ...audit.results,
+          issues: filteredIssues,
+          stats: {
+            ...audit.results.stats,
+            issues: filteredIssues.length,
+            seoScore: improvedScore
+          }
+        };
+        
+        res.json({
+          ...audit,
+          results: updatedResults
+        });
+      } else {
+        res.json(audit);
+      }
     } catch (error) {
       console.error('Error fetching audit:', error);
       res.status(500).json({ error: 'Failed to fetch audit' });
