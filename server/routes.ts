@@ -6,7 +6,7 @@ import { CrawlerService } from "./services/crawler";
 import { GSCService } from "./services/gsc";
 import { KeywordService } from "./services/keywords";
 import { AIService } from "./services/ai";
-import { ReportService } from "./services/report";
+import { EnhancedReportService } from "./services/enhanced-report";
 import { PageSpeedService } from "./services/pagespeed";
 import { CustomSearchService } from "./services/customsearch";
 // import { EmailService } from "./services/email"; // Disabled for now

@@ -34,19 +34,30 @@ export class ReportService {
         }
       });
 
-      return pdf;
+      return Buffer.from(pdf);
     } finally {
       await browser.close();
     }
   }
 
   private generateReportHTML(results: AuditResultsType): string {
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    });
+    
+    const blogCount = results.pages?.length || 0;
+    const totalClicks = results.gscData?.totalClicks || 0;
+    const totalImpressions = results.gscData?.totalImpressions || 0;
+    const avgPosition = results.gscData?.avgPosition || 0;
+    const topQueries = results.gscData?.topQueries || [];
+    
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>SEO Audit Report - ${results.url}</title>
+        <title>SEO Report - ${results.url}</title>
         <style>
           body {
             font-family: 'Arial', sans-serif;
