@@ -149,7 +149,15 @@ async function processAudit(auditId: number, url: string, industry: string, emai
 
     // 1. Crawl website (up to 25 pages for comprehensive analysis)
     console.log(`Starting comprehensive crawl for ${fullUrl}`);
-    const pages = await crawlerService.crawlWebsite(fullUrl, 25);
+    let pages = [];
+    
+    // Skip direct crawling for synviz.com due to IP restrictions
+    if (domainUrl.includes('synviz.com')) {
+      console.log('Skipping direct crawl for synviz.com - using GSC data instead');
+      pages = [];
+    } else {
+      pages = await crawlerService.crawlWebsite(fullUrl, 25);
+    }
     await storage.updateAuditProgress(auditId, 30);
     
     // If crawling failed due to network issues, create analysis from GSC data
