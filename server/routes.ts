@@ -139,19 +139,23 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     // Update progress
     await storage.updateAuditProgress(auditId, 10);
 
-    // 1. Crawl website
-    console.log(`Starting crawl for ${url}`);
-    const pages = await crawlerService.crawlWebsite(url, 5);
+    // Normalize URLs - ensure crawler gets full URL, GSC gets domain format
+    const fullUrl = url.includes('://') ? url : `https://${url}`;
+    const domainUrl = url.replace(/^https?:\/\//, '');
+
+    // 1. Crawl website  
+    console.log(`Starting crawl for ${fullUrl} (normalized from ${url})`);
+    const pages = await crawlerService.crawlWebsite(fullUrl, 5);
     await storage.updateAuditProgress(auditId, 30);
 
     // 2. Get GSC data
     console.log('Fetching GSC data...');
-    const gscData = await gscService.getSearchConsoleData(url);
+    const gscData = await gscService.getSearchConsoleData(domainUrl);
     await storage.updateAuditProgress(auditId, 50);
 
     // 3. Perform keyword research
     console.log('Performing keyword research...');
-    const keywordData = await keywordService.performKeywordResearch(url, industry);
+    const keywordData = await keywordService.performKeywordResearch(domainUrl, industry);
     await storage.updateAuditProgress(auditId, 70);
 
     // 4. Generate AI recommendations
