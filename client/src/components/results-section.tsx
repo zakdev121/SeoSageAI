@@ -509,78 +509,123 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
 
             <TabsContent value="content">
               <div className="space-y-6">
+                {/* Content Issues */}
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Content Analysis</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <h4 className="font-medium text-slate-900 mb-3">Headings Structure</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>H1 Tags</span>
-                          <span className="font-medium">{results.pages.filter(p => p.h1.length > 0).length} pages</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>H2 Tags</span>
-                          <span className="font-medium">{results.pages.reduce((sum, p) => sum + p.h2.length, 0)} total</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Average per page</span>
-                          <span className="font-medium">{(results.pages.reduce((sum, p) => sum + p.h2.length, 0) / results.pages.length).toFixed(1)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <h4 className="font-medium text-slate-900 mb-3">Image Optimization</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Total Images</span>
-                          <span className="font-medium">{results.pages.reduce((sum, p) => sum + p.images.length, 0)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Missing Alt Text</span>
-                          <span className="font-medium text-red-600">
-                            {results.pages.reduce((sum, p) => sum + p.images.filter(img => !img.alt).length, 0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Alt Text Coverage</span>
-                          <span className="font-medium">
-                            {((1 - results.pages.reduce((sum, p) => sum + p.images.filter(img => !img.alt).length, 0) / results.pages.reduce((sum, p) => sum + p.images.length, 0)) * 100).toFixed(1)}%
-                          </span>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Content Issues & Opportunities</h3>
+                  <div className="space-y-4">
+                    {results.issues
+                      .filter(issue => issue.type.toLowerCase().includes('meta') || 
+                                     issue.type.toLowerCase().includes('title') || 
+                                     issue.type.toLowerCase().includes('content') ||
+                                     issue.type.toLowerCase().includes('heading'))
+                      .map((issue, index) => (
+                      <div key={index} className={`p-4 rounded-lg border ${
+                        issue.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                        issue.severity === 'medium' ? 'bg-amber-50 border-amber-200' :
+                        'bg-blue-50 border-blue-200'
+                      }`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900">{issue.type}</h4>
+                            <p className="text-sm text-slate-600 mt-1">{issue.message}</p>
+                            {issue.page && (
+                              <p className="text-xs text-slate-500 mt-2">Page: {issue.page}</p>
+                            )}
+                          </div>
+                          <Badge className={getSeverityColor(issue.severity)}>
+                            {issue.severity}
+                          </Badge>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
+                {/* AI Content Recommendations */}
+                {results.aiRecommendations && results.aiRecommendations.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">AI Content Recommendations</h3>
+                    <div className="space-y-4">
+                      {results.aiRecommendations.map((rec, index) => (
+                        <div key={index} className="border border-slate-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium text-slate-900">{rec.title}</h4>
+                            <Badge className={`ml-2 ${
+                              rec.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              rec.priority === 'medium' ? 'bg-amber-100 text-amber-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {rec.priority} priority
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-700 mb-2">{rec.description}</p>
+                          {rec.targetKeyword && (
+                            <p className="text-xs text-slate-500">Target keyword: {rec.targetKeyword}</p>
+                          )}
+                          {rec.content && (
+                            <div className="mt-3 p-3 bg-blue-50 rounded text-sm">
+                              <strong>Suggested content:</strong>
+                              <p className="mt-1">{rec.content}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Keywords for Content */}
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Internal Linking</h3>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Page</TableHead>
-                          <TableHead>Internal Links</TableHead>
-                          <TableHead>External Links</TableHead>
-                          <TableHead>Broken Links</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {results.pages.map((page, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium text-slate-900">
-                              {new URL(page.url).pathname}
-                            </TableCell>
-                            <TableCell className="text-slate-600">{page.internalLinks.length}</TableCell>
-                            <TableCell className="text-slate-600">{page.externalLinks.length}</TableCell>
-                            <TableCell className={page.brokenLinks.length > 0 ? 'text-red-600' : 'text-slate-600'}>
-                              {page.brokenLinks.length}
-                            </TableCell>
-                          </TableRow>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Content Optimization Keywords</h3>
+                  <p className="text-slate-600 mb-4">Top performing keywords from Google Search Console to optimize content around</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {results.gscData?.topQueries?.slice(0, 9).map((query, index) => (
+                      <div key={index} className="bg-slate-50 rounded-lg p-4">
+                        <h4 className="font-medium text-slate-900 mb-2">"{query.query}"</h4>
+                        <div className="space-y-1 text-sm text-slate-600">
+                          <div className="flex justify-between">
+                            <span>Clicks:</span>
+                            <span className="font-medium">{query.clicks}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Impressions:</span>
+                            <span className="font-medium">{query.impressions.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Position:</span>
+                            <span className="font-medium">#{query.position.toFixed(1)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>CTR:</span>
+                            <span className="font-medium">{query.ctr.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content Strategy */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3">Content Strategy Insights</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium mb-2">High-Opportunity Keywords</h4>
+                      <ul className="text-sm text-slate-600 space-y-1">
+                        {results.keywordOpportunities?.slice(0, 5).map((keyword, index) => (
+                          <li key={index}>• {keyword.keyword} (Pos: {keyword.position.toFixed(1)})</li>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Content Recommendations</h4>
+                      <ul className="text-sm text-slate-600 space-y-1">
+                        <li>• Create content targeting position 11-30 keywords</li>
+                        <li>• Optimize existing pages for better CTR</li>
+                        <li>• Add internal links between related content</li>
+                        <li>• Update meta descriptions for higher CTR</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
