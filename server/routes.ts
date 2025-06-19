@@ -147,18 +147,22 @@ async function processAudit(auditId: number, url: string, industry: string, emai
     const fullUrl = url.includes('://') ? url : `https://${url}`;
     const domainUrl = url.replace(/^https?:\/\//, '');
 
-    // 1. Crawl website (up to 25 pages for comprehensive analysis)
-    console.log(`Starting comprehensive crawl for ${fullUrl}`);
+    // 1. Crawl website (COMMENTED OUT FOR TESTING - FOCUS ON GSC/API DATA)
+    console.log(`Skipping direct crawling - focusing on GSC and API analysis for ${fullUrl}`);
     let pages: any[] = [];
     
-    // Attempt full crawling - deployment environment should resolve IP restrictions
-    try {
-      pages = await crawlerService.crawlWebsite(fullUrl, 25);
-    } catch (error: any) {
-      console.log(`Crawling failed for ${fullUrl}: ${error.message}`);
-      console.log('Note: Deployment may resolve IP restrictions for better crawling coverage');
-      pages = [];
-    }
+    // // Attempt full crawling with timeout for problematic domains
+    // try {
+    //   if (domainUrl.includes('synviz.com')) {
+    //     console.log('Using GSC data for synviz.com analysis - skipping direct crawl due to IP restrictions');
+    //     pages = [];
+    //   } else {
+    //     pages = await crawlerService.crawlWebsite(fullUrl, 25);
+    //   }
+    // } catch (error: any) {
+    //   console.log(`Crawling failed for ${fullUrl}: ${error.message}`);
+    //   pages = [];
+    // }
     await storage.updateAuditProgress(auditId, 30);
     
     // If crawling failed due to network issues, create analysis from GSC data
