@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AIAssistantProps {
   auditId: number;
@@ -18,6 +19,8 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   const [expandedResolution, setExpandedResolution] = useState<string | null>(null);
   const [generatedBlogPost, setGeneratedBlogPost] = useState<any>(null);
   const [applyingFix, setApplyingFix] = useState<string | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const { toast } = useToast();
 
   // Fetch AI-generated issue resolutions
   const { data: resolutions, isLoading: resolutionsLoading } = useQuery({
@@ -59,15 +62,25 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     onSuccess: (data) => {
       setApplyingFix(null);
       if (data.success) {
-        // Success feedback could be added here (toast notification)
-        console.log('Fix applied successfully:', data.message);
+        toast({
+          title: "SEO Fix Applied Successfully",
+          description: data.message || "The SEO fix has been applied to your WordPress site.",
+        });
       } else {
-        console.error('Fix failed:', data.message);
+        toast({
+          title: "Fix Application Failed",
+          description: data.message || "Unable to apply the SEO fix. Please check your WordPress credentials.",
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
       setApplyingFix(null);
-      console.error('Error applying fix:', error);
+      toast({
+        title: "Error Applying Fix",
+        description: "Something went wrong while applying the SEO fix. Please try again.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -88,6 +101,22 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     if (blogStrategy?.blogTopics) {
       await generateCalendarMutation.mutateAsync(blogStrategy.blogTopics);
     }
+  };
+
+  const handleApplyFix = async (resolution: any) => {
+    const fixId = `${resolution.issueType}-${Date.now()}`;
+    setApplyingFix(fixId);
+    
+    // Convert resolution to WordPress SEO fix format
+    const fix = {
+      type: 'meta_description', // This would be determined based on resolution.issueType
+      postId: 0, // This would need to be determined from the resolution context
+      currentValue: '',
+      newValue: resolution.actionPlan?.technicalDetails || '',
+      description: resolution.actionPlan?.overview || ''
+    };
+    
+    await applyFixMutation.mutateAsync(fix);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -159,6 +188,8 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         onToggle={() => setExpandedResolution(
                           expandedResolution === `critical-${index}` ? null : `critical-${index}`
                         )}
+                        onApplyFix={handleApplyFix}
+                        isApplying={applyingFix === `${resolution.issueType}-${index}`}
                       />
                     ))}
                   </CardContent>
@@ -183,6 +214,8 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         onToggle={() => setExpandedResolution(
                           expandedResolution === `medium-${index}` ? null : `medium-${index}`
                         )}
+                        onApplyFix={handleApplyFix}
+                        isApplying={applyingFix === `${resolution.issueType}-${index}`}
                       />
                     ))}
                   </CardContent>
@@ -207,6 +240,8 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         onToggle={() => setExpandedResolution(
                           expandedResolution === `quick-${index}` ? null : `quick-${index}`
                         )}
+                        onApplyFix={handleApplyFix}
+                        isApplying={applyingFix === `${resolution.issueType}-${index}`}
                       />
                     ))}
                   </CardContent>
