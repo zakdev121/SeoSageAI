@@ -175,6 +175,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Revert applied fix
+  app.post("/api/audits/:id/revert-fix", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { issueType, pageUrl } = req.body;
+      
+      if (!issueType || !pageUrl) {
+        return res.status(400).json({ error: 'Issue type and page URL are required' });
+      }
+
+      const success = await issueTracker.revertIssue(auditId, issueType, pageUrl);
+      
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: 'Fix successfully reverted',
+          issueType,
+          pageUrl
+        });
+      } else {
+        res.status(404).json({ 
+          success: false, 
+          message: 'No fix found to revert for this issue' 
+        });
+      }
+    } catch (error: any) {
+      console.error('Error reverting fix:', error);
+      res.status(500).json({ error: 'Failed to revert fix' });
+    }
+  });
+
   // Generate blog strategy
   app.get("/api/audits/:id/blog-strategy", async (req, res) => {
     try {

@@ -39,6 +39,27 @@ export class IssueTrackerService {
     return normalize(url1) === normalize(url2);
   }
 
+  async revertIssue(
+    auditId: number, 
+    issueType: string, 
+    pageUrl: string
+  ): Promise<boolean> {
+    const fixedIssues = await storage.getFixedIssues(auditId);
+    const issueExists = fixedIssues.some(fix => 
+      fix.issueType === issueType && 
+      (fix.issueUrl === pageUrl || this.urlsMatch(fix.issueUrl, pageUrl))
+    );
+    
+    if (issueExists) {
+      // Remove the issue from storage
+      await storage.revertFixedIssue(auditId, issueType, pageUrl);
+      console.log(`✓ Issue reverted: ${issueType} on ${pageUrl}`);
+      return true;
+    }
+    
+    return false;
+  }
+
   async getFixedIssuesSummary(auditId: number): Promise<{
     totalFixed: number;
     byType: Record<string, number>;

@@ -8,6 +8,7 @@ export interface IStorage {
   failAudit(id: number, error: string): Promise<void>;
   markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void>;
   getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>>;
+  revertFixedIssue(auditId: number, issueType: string, issueUrl: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -90,6 +91,16 @@ export class MemStorage implements IStorage {
 
   async getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>> {
     return this.fixedIssues.get(auditId) || [];
+  }
+
+  async revertFixedIssue(auditId: number, issueType: string, issueUrl: string): Promise<void> {
+    const existingFixes = this.fixedIssues.get(auditId);
+    if (existingFixes) {
+      const filteredFixes = existingFixes.filter(fix => 
+        !(fix.issueType === issueType && fix.issueUrl === issueUrl)
+      );
+      this.fixedIssues.set(auditId, filteredFixes);
+    }
   }
 }
 
