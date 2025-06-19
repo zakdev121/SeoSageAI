@@ -56,6 +56,14 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={testOpenAI}
+                className="text-xs"
+              >
+                Test AI Connection
+              </Button>
               <span className="text-sm text-slate-600">Marketing Team</span>
               <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
                 <i className="fas fa-user text-slate-600 text-xs"></i>
