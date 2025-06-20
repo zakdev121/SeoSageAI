@@ -33,10 +33,21 @@ export class CrawlerService {
     }
   }
 
+  private normalizeUrl(url: string): string {
+    // Add protocol if missing
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}`;
+    }
+    return url;
+  }
+
   async crawlWebsite(url: string, maxPages: number = 5): Promise<PageDataType[]> {
     const results: PageDataType[] = [];
     const visited = new Set<string>();
-    const toVisit = [url];
+    
+    // Normalize URL - add https:// if missing
+    const normalizedUrl = this.normalizeUrl(url);
+    const toVisit = [normalizedUrl];
 
     while (toVisit.length > 0 && results.length < maxPages) {
       const currentUrl = toVisit.shift()!;
@@ -50,11 +61,11 @@ export class CrawlerService {
         results.push(pageData);
 
         // Extract internal links for further crawling
-        const baseUrl = new URL(url);
-        pageData.internalLinks.slice(0, 10).forEach(link => {
+        const baseUrl = new URL(normalizedUrl);
+        pageData.internalLinks.slice(0, 15).forEach(link => {
           try {
             const linkUrl = new URL(link, baseUrl);
-            if (linkUrl.hostname === baseUrl.hostname && !visited.has(linkUrl.href) && toVisit.length < maxPages * 2) {
+            if (linkUrl.hostname === baseUrl.hostname && !visited.has(linkUrl.href) && toVisit.length < maxPages * 3) {
               toVisit.push(linkUrl.href);
             }
           } catch (e) {

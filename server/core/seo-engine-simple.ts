@@ -22,15 +22,44 @@ export class SEOEngine {
   async performAudit(url: string, industry: string): Promise<AuditResultsType> {
     const { CrawlerService } = await import('../services/crawler.js');
     const { CustomSearchService } = await import('../services/customsearch.js');
+    const { WordPressService } = await import('../services/wordpress-api.js');
+    
+    // Normalize URL - add https:// if missing
+    const normalizedUrl = this.normalizeUrl(url);
+    console.log(`🔍 Starting SEO audit for ${normalizedUrl}`);
     
     const crawler = new CrawlerService();
     const search = new CustomSearchService();
+    const wpService = new WordPressService(normalizedUrl);
     
-    await crawler.initialize();
+    let pages: any[] = [];
+    let contentSource = 'Unknown';
     
     try {
-      // Crawl website pages
-      const pages = await crawler.crawlWebsite(url, 10);
+      // Priority 1: Try WordPress API first
+      const isWordPress = await wpService.testConnection();
+      if (isWordPress) {
+        console.log(`WordPress detected for ${normalizedUrl} - using REST API`);
+        pages = await wpService.getContentAsPageData();
+        contentSource = 'WordPress REST API';
+        console.log(`Successfully fetched ${pages.length} pages via WordPress API`);
+      } else {
+        throw new Error('Not a WordPress site');
+      }
+    } catch (wpError) {
+      console.log(`WordPress API failed: ${wpError.message}, trying web crawling...`);
+      
+      // Priority 2: Fallback to web crawling
+      try {
+        await crawler.initialize();
+        pages = await crawler.crawlWebsite(normalizedUrl, 10);
+        contentSource = 'Web Crawling';
+        console.log(`Successfully crawled ${pages.length} pages`);
+      } catch (crawlError) {
+        console.error(`All content methods failed:`, crawlError);
+        pages = [];
+      }
+    }
       
       // Get competitor intelligence 
       const competitors = await search.searchCompetitors(industry, ['AI automation', 'IT staffing']);
