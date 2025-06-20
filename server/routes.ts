@@ -17,6 +17,88 @@ import { htmlIntegrityService } from "./services/html-integrity";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Tenant detection and registration
+  app.post("/api/tenant/detect", async (req, res) => {
+    try {
+      const { hostname, subdomain } = req.body;
+      
+      // Default to synviz for main domain
+      if (hostname.includes('synviz') || subdomain === 'synviz' || hostname.includes('localhost')) {
+        return res.json({
+          tenantId: 'synviz',
+          name: 'Synviz',
+          isConfigured: true,
+          plan: 'enterprise'
+        });
+      }
+      
+      // Check for existing tenant by subdomain
+      const { tenantManager } = await import('./core/tenant-manager.js');
+      const tenant = tenantManager.getTenantConfig(subdomain);
+      
+      if (tenant) {
+        return res.json({
+          tenantId: tenant.tenantId,
+          name: tenant.name,
+          isConfigured: true,
+          plan: tenant.plan
+        });
+      }
+      
+      // New tenant
+      res.status(404).json({ message: 'Tenant not found' });
+    } catch (error) {
+      console.error('Tenant detection error:', error);
+      res.status(500).json({ error: 'Failed to detect tenant' });
+    }
+  });
+
+  app.post("/api/tenant/register", async (req, res) => {
+    try {
+      const { name, website, industry, keywords, plan, apiKeys } = req.body;
+      
+      if (!name || !website || !industry) {
+        return res.status(400).json({ error: 'Name, website, and industry are required' });
+      }
+      
+      const { tenantManager } = await import('./core/tenant-manager.js');
+      
+      const tenantConfig = await tenantManager.registerTenant({
+        name,
+        website,
+        industry,
+        plan: plan || 'starter',
+        wpCredentials: apiKeys?.wpUsername ? {
+          username: apiKeys.wpUsername,
+          password: apiKeys.wpPassword,
+          siteUrl: website
+        } : undefined
+      });
+      
+      // Store API keys securely (in production, encrypt these)
+      if (apiKeys?.googleApiKey) {
+        process.env[`${tenantConfig.tenantId.toUpperCase()}_GOOGLE_API_KEY`] = apiKeys.googleApiKey;
+      }
+      if (apiKeys?.googleSearchEngineId) {
+        process.env[`${tenantConfig.tenantId.toUpperCase()}_GOOGLE_SEARCH_ENGINE_ID`] = apiKeys.googleSearchEngineId;
+      }
+      
+      res.json({
+        success: true,
+        tenant: {
+          tenantId: tenantConfig.tenantId,
+          name: tenantConfig.name,
+          isConfigured: true,
+          plan: tenantConfig.plan
+        },
+        message: 'SEO AI configured successfully'
+      });
+    } catch (error) {
+      console.error('Tenant registration error:', error);
+      res.status(500).json({ error: 'Failed to register tenant' });
+    }
+  });
+
   // Start SEO audit
   app.post("/api/audits", async (req, res) => {
     try {
