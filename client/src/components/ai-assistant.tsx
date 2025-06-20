@@ -431,7 +431,6 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
       <div className="flex items-center gap-2 mb-6">
         <Lightbulb className="h-6 w-6 text-blue-600" />
         <h2 className="text-2xl font-bold">AI SEO Assistant</h2>
-        <Badge variant="outline">Powered by OpenAI</Badge>
       </div>
 
       <Tabs defaultValue="resolutions" className="w-full">
