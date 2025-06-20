@@ -177,6 +177,21 @@ export const PageData = z.object({
 });
 
 export const GSCData = z.object({
+  // 7-day metrics
+  last7Days: z.object({
+    totalClicks: z.number(),
+    totalImpressions: z.number(),
+    avgCTR: z.number(),
+    avgPosition: z.number(),
+  }),
+  // 90-day metrics
+  last90Days: z.object({
+    totalClicks: z.number(),
+    totalImpressions: z.number(),
+    avgCTR: z.number(),
+    avgPosition: z.number(),
+  }),
+  // Legacy fields for backward compatibility
   totalClicks: z.number(),
   totalImpressions: z.number(),
   avgCTR: z.number(),

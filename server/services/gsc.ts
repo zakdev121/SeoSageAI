@@ -53,44 +53,68 @@ export class GSCService {
       console.log(`Using GSC site URL: ${gscSiteUrl}`);
       
       const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 90); // Last 90 days
-
-      // Get overall performance data
-      const performanceResponse = await this.searchConsole.searchanalytics.query({
+      
+      // Fetch 7-day data
+      const startDate7Days = new Date();
+      startDate7Days.setDate(startDate7Days.getDate() - 7);
+      
+      const performance7DaysResponse = await this.searchConsole.searchanalytics.query({
         siteUrl: gscSiteUrl,
         requestBody: {
-          startDate: startDate.toISOString().split('T')[0],
+          startDate: startDate7Days.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
           dimensions: ['query'],
           rowLimit: 100
         }
       });
 
-      // Get page performance data
+      // Fetch 90-day data
+      const startDate90Days = new Date();
+      startDate90Days.setDate(startDate90Days.getDate() - 90);
+      
+      const performance90DaysResponse = await this.searchConsole.searchanalytics.query({
+        siteUrl: gscSiteUrl,
+        requestBody: {
+          startDate: startDate90Days.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          dimensions: ['query'],
+          rowLimit: 100
+        }
+      });
+
+      // Get page performance data (90 days for detailed analysis)
       const pageResponse = await this.searchConsole.searchanalytics.query({
         siteUrl: gscSiteUrl,
         requestBody: {
-          startDate: startDate.toISOString().split('T')[0],
+          startDate: startDate90Days.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
           dimensions: ['page'],
           rowLimit: 50
         }
       });
 
-      const queryData = performanceResponse.data.rows || [];
+      const queryData7Days = performance7DaysResponse.data.rows || [];
+      const queryData90Days = performance90DaysResponse.data.rows || [];
       const pageData = pageResponse.data.rows || [];
 
-      // Calculate totals
-      const totalClicks = queryData.reduce((sum, row) => sum + (row.clicks || 0), 0);
-      const totalImpressions = queryData.reduce((sum, row) => sum + (row.impressions || 0), 0);
-      const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-      const avgPosition = queryData.length > 0 
-        ? queryData.reduce((sum, row) => sum + (row.position || 0), 0) / queryData.length 
+      // Calculate 7-day totals
+      const totalClicks7Days = queryData7Days.reduce((sum, row) => sum + (row.clicks || 0), 0);
+      const totalImpressions7Days = queryData7Days.reduce((sum, row) => sum + (row.impressions || 0), 0);
+      const avgCTR7Days = totalImpressions7Days > 0 ? (totalClicks7Days / totalImpressions7Days) * 100 : 0;
+      const avgPosition7Days = queryData7Days.length > 0 
+        ? queryData7Days.reduce((sum, row) => sum + (row.position || 0), 0) / queryData7Days.length 
         : 0;
 
-      // Format top queries
-      const topQueries = queryData.slice(0, 20).map(row => ({
+      // Calculate 90-day totals
+      const totalClicks90Days = queryData90Days.reduce((sum, row) => sum + (row.clicks || 0), 0);
+      const totalImpressions90Days = queryData90Days.reduce((sum, row) => sum + (row.impressions || 0), 0);
+      const avgCTR90Days = totalImpressions90Days > 0 ? (totalClicks90Days / totalImpressions90Days) * 100 : 0;
+      const avgPosition90Days = queryData90Days.length > 0 
+        ? queryData90Days.reduce((sum, row) => sum + (row.position || 0), 0) / queryData90Days.length 
+        : 0;
+
+      // Format top queries (from 90-day data)
+      const topQueries = queryData90Days.slice(0, 20).map(row => ({
         query: row.keys?.[0] || '',
         clicks: row.clicks || 0,
         impressions: row.impressions || 0,
@@ -108,10 +132,24 @@ export class GSCService {
       }));
 
       return {
-        totalClicks,
-        totalImpressions,
-        avgCTR: Math.round(avgCTR * 100) / 100,
-        avgPosition: Math.round(avgPosition * 100) / 100,
+        // New time-period specific data
+        last7Days: {
+          totalClicks: totalClicks7Days,
+          totalImpressions: totalImpressions7Days,
+          avgCTR: Math.round(avgCTR7Days * 100) / 100,
+          avgPosition: Math.round(avgPosition7Days * 100) / 100,
+        },
+        last90Days: {
+          totalClicks: totalClicks90Days,
+          totalImpressions: totalImpressions90Days,
+          avgCTR: Math.round(avgCTR90Days * 100) / 100,
+          avgPosition: Math.round(avgPosition90Days * 100) / 100,
+        },
+        // Legacy fields (use 90-day data for backward compatibility)
+        totalClicks: totalClicks90Days,
+        totalImpressions: totalImpressions90Days,
+        avgCTR: Math.round(avgCTR90Days * 100) / 100,
+        avgPosition: Math.round(avgPosition90Days * 100) / 100,
         topQueries,
         topPages
       };
