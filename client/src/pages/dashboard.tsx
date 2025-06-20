@@ -166,8 +166,55 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Audit Progress Loader */}
+        {latestAudit.audit.status === 'processing' && (
+          <div className="mb-8">
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="text-center mb-4">
+                  <div className="flex items-center justify-center space-x-2 mb-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <h3 className="text-lg font-semibold text-slate-900">Running SEO Audit</h3>
+                  </div>
+                  <p className="text-slate-600 mb-4">
+                    Analyzing {latestAudit.audit.url} - This may take 2-3 minutes
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm text-slate-600">
+                    <span>Progress</span>
+                    <span>{latestAudit.audit.progress}% Complete</span>
+                  </div>
+                  <Progress value={latestAudit.audit.progress} className="w-full" />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                    <div className={`text-center p-3 rounded-lg ${latestAudit.audit.progress >= 25 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className="text-sm font-medium">Page Analysis</div>
+                      <div className="text-xs mt-1">{latestAudit.audit.progress >= 25 ? 'Complete' : 'In Progress'}</div>
+                    </div>
+                    <div className={`text-center p-3 rounded-lg ${latestAudit.audit.progress >= 50 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className="text-sm font-medium">Search Console</div>
+                      <div className="text-xs mt-1">{latestAudit.audit.progress >= 50 ? 'Complete' : 'Pending'}</div>
+                    </div>
+                    <div className={`text-center p-3 rounded-lg ${latestAudit.audit.progress >= 75 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className="text-sm font-medium">Performance</div>
+                      <div className="text-xs mt-1">{latestAudit.audit.progress >= 75 ? 'Complete' : 'Pending'}</div>
+                    </div>
+                    <div className={`text-center p-3 rounded-lg ${latestAudit.audit.progress >= 100 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className="text-sm font-medium">Analysis</div>
+                      <div className="text-xs mt-1">{latestAudit.audit.progress >= 100 ? 'Complete' : 'Pending'}</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* SEO Audit Results Cards at the top */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
+        {latestAudit.audit.status === 'completed' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-gray-800 mb-1">
@@ -222,6 +269,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
