@@ -199,9 +199,9 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
           </CardContent>
         </Card>
       )}
-
-
-            <TabsContent value="overview" className="space-y-6">
+    </div>
+  );
+}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Issues */}
                 <div>
