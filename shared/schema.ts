@@ -115,14 +115,14 @@ export type SignupData = z.infer<typeof signupSchema>;
 // SEO Data Types
 export const PageData = z.object({
   url: z.string(),
-  title: z.string().optional(),
-  metaDescription: z.string().optional(),
+  title: z.string().nullable().optional(),
+  metaDescription: z.string().nullable().optional(),
   h1: z.array(z.string()),
   h2: z.array(z.string()),
   wordCount: z.number(),
   images: z.array(z.object({
     src: z.string(),
-    alt: z.string().optional(),
+    alt: z.string().nullable().optional(),
     size: z.number().optional(),
   })),
   internalLinks: z.array(z.string()),
