@@ -27,11 +27,16 @@ export interface IStorage {
   failAudit(id: number, error: string): Promise<void>;
   refreshAudit(id: number): Promise<void>;
   
+  // Legacy fixed issues methods (for backward compatibility)
+  markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void>;
+  getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>>;
+  revertFixedIssue(auditId: number, issueType: string, issueUrl: string): Promise<void>;
+  
   // SEO Issues operations
   saveSeoIssues(auditId: number, issues: SEOIssueType[]): Promise<void>;
   getSeoIssues(auditId: number): Promise<SEOIssue[]>;
-  markIssueAsFixed(issueId: number): Promise<void>;
-  markIssueAsIgnored(issueId: number): Promise<void>;
+  markSeoIssueAsFixed(issueId: number): Promise<void>;
+  markSeoIssueAsIgnored(issueId: number): Promise<void>;
   getActiveIssues(auditId: number): Promise<SEOIssue[]>;
   
   // Blog Posts operations
@@ -153,7 +158,54 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(seoIssues.createdAt));
   }
 
-  async markIssueAsFixed(issueId: number): Promise<void> {
+  // Legacy methods for backward compatibility
+  async markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void> {
+    await db
+      .update(seoIssues)
+      .set({
+        status: 'fixed',
+        fixedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(seoIssues.auditId, auditId),
+        eq(seoIssues.issueType, issueType),
+        eq(seoIssues.pageUrl, issueUrl)
+      ));
+  }
+
+  async getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>> {
+    const fixedIssues = await db
+      .select()
+      .from(seoIssues)
+      .where(and(
+        eq(seoIssues.auditId, auditId),
+        eq(seoIssues.status, 'fixed')
+      ));
+
+    return fixedIssues.map(issue => ({
+      issueType: issue.issueType,
+      issueUrl: issue.pageUrl,
+      fixedAt: issue.fixedAt || new Date()
+    }));
+  }
+
+  async revertFixedIssue(auditId: number, issueType: string, issueUrl: string): Promise<void> {
+    await db
+      .update(seoIssues)
+      .set({
+        status: 'active',
+        fixedAt: null,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(seoIssues.auditId, auditId),
+        eq(seoIssues.issueType, issueType),
+        eq(seoIssues.pageUrl, issueUrl)
+      ));
+  }
+
+  async markSeoIssueAsFixed(issueId: number): Promise<void> {
     await db
       .update(seoIssues)
       .set({
@@ -164,7 +216,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(seoIssues.id, issueId));
   }
 
-  async markIssueAsIgnored(issueId: number): Promise<void> {
+  async markSeoIssueAsIgnored(issueId: number): Promise<void> {
     await db
       .update(seoIssues)
       .set({

@@ -139,4 +139,5 @@ export class MemStorage implements IStorage {
   }
 }
 
+// Use DatabaseStorage for persistent audit data
 export { storage } from "./database-storage";
