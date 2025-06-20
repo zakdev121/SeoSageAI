@@ -54,7 +54,7 @@ Current SEO Score: ${auditResults.stats.seoScore}/100
 Current Traffic: ${auditResults.gscData?.totalClicks || 0} clicks
 
 Generated Topics (based on current trends):
-${Array.isArray(topics) && topics.length > 0 ? topics.map(t => `- ${t.title} (${t.targetKeyword})`).join('\n') : '- No trending topics generated yet'}
+${Array.isArray(topics) && topics.length > 0 ? topics.map(t => `- ${t.title || 'Untitled'} (${t.targetKeyword || 'No keyword'})`).join('\n') : '- Generating trending topics based on industry data...'}
 
 Create a comprehensive content strategy that explains:
 1. How these trending topics align with business goals
@@ -200,8 +200,28 @@ Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
     
     try {
       // Use the new template engine for consistent, professional blog generation
-      const blogPost = await blogTemplateEngine.generateBlogPost(topic);
-      return blogPost;
+      const templatePost = await blogTemplateEngine.generateBlogPost(topic);
+      
+      // Convert template engine result to expected BlogPost structure
+      return {
+        title: templatePost.title || topic.title,
+        metaDescription: templatePost.metaDescription || topic.metaDescription,
+        slug: topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        content: templatePost.content || '',
+        headings: {
+          h1: templatePost.title || topic.title,
+          h2: [],
+          h3: []
+        },
+        internalLinks: [],
+        featuredSnippetOptimization: {
+          question: `What is ${topic.targetKeyword}?`,
+          answer: templatePost.metaDescription || topic.metaDescription,
+          format: 'paragraph'
+        },
+        faq: [],
+        callToAction: 'Contact us to learn more about implementing these strategies for your business.'
+      };
     } catch (error) {
       console.error('Error using template engine, falling back to direct generation:', error);
       
@@ -464,7 +484,19 @@ Respond with JSON:
       return result;
     } catch (error) {
       console.error('Error generating content calendar:', error);
-      return { calendar: {}, summary: {} };
+      return { 
+        calendar: {
+          month1: [],
+          month2: [],
+          month3: []
+        }, 
+        summary: {
+          totalPosts: "0",
+          weeklyFrequency: "Not available",
+          focusAreas: [],
+          expectedSeoImpact: "Unable to generate calendar"
+        }
+      };
     }
   }
 }
