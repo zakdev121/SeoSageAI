@@ -25,8 +25,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create audit record
       const audit = await storage.createAudit(validatedData);
       
-      // Start background processing
-      processAudit(audit.id, validatedData.url, validatedData.industry, validatedData.email);
+      // Start background processing with new SEO engine
+      processAuditWithEngine(audit.id, validatedData.url, validatedData.industry, validatedData.email);
       
       res.json({ auditId: audit.id, status: 'started' });
     } catch (error) {
@@ -404,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WordPress API routes for applying SEO fixes
+  // WordPress API routes for applying SEO fixes with clean engine
   app.post("/api/audits/:id/apply-fix", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
@@ -415,8 +415,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      const wpService = new WordPressService('https://synviz.com');
-      const result = await wpService.applySEOFix(fix);
+      // Use clean SEO engine for safe fix application (Pillar 3)
+      const { seoEngine } = await import('./core/seo-engine-simple.js');
+      const result = await seoEngine.applySafeFix(auditId, fix.type, fix.pageUrl || 'https://synviz.com/hire-now/');
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
@@ -978,4 +979,51 @@ function calculateSEOScore(pages: any[], issues: any[]): number {
   console.log(`Score breakdown: Base(100) - Critical(${criticalIssues * 5}) - Medium(${mediumIssues * 1.5}) - Low(${lowIssues * 0.5}) + Bonuses = ${finalScore}`);
   
   return finalScore;
+}
+
+// Clean SEO Engine Integration for Synviz - Three Core Pillars
+async function processAuditWithEngine(auditId: number, url: string, industry: string, email?: string) {
+  try {
+    await storage.updateAuditProgress(auditId, 10);
+    
+    // Import the clean SEO engine
+    const { seoEngine } = await import('./core/seo-engine-simple.js');
+    
+    await storage.updateAuditProgress(auditId, 30);
+    
+    // Pillar 1: Extract information and perform comprehensive audit
+    console.log(`🔍 Starting comprehensive audit for ${url} using clean SEO engine`);
+    const auditResults = await seoEngine.performAudit(url, industry);
+    
+    await storage.updateAuditProgress(auditId, 60);
+    
+    // Pillar 2: Generate dynamic AI suggestions with competitor intelligence
+    console.log(`🧠 Generating AI-powered suggestions for ${url}`);
+    const suggestions = await seoEngine.generateSuggestions(auditResults);
+    
+    // Transform suggestions to match schema format
+    auditResults.aiRecommendations = suggestions.map((suggestion: any) => ({
+      type: suggestion.type || 'general',
+      priority: suggestion.priority || 'medium',
+      title: suggestion.title || 'SEO Improvement',
+      description: suggestion.description || '',
+      impact: suggestion.expectedImpact || 'Improved rankings',
+      effort: suggestion.implementation?.difficulty || 'medium',
+      content: typeof suggestion.implementation?.steps === 'string' 
+        ? suggestion.implementation.steps 
+        : suggestion.implementation?.steps?.join('\n') || ''
+    }));
+    
+    await storage.updateAuditProgress(auditId, 90);
+    
+    // Complete audit with comprehensive results
+    await storage.completeAudit(auditId, auditResults);
+    
+    console.log(`✅ Clean SEO audit completed for ${url} - Score: ${auditResults.stats?.seoScore}/100`);
+    console.log(`📊 Analysis: ${auditResults.pages?.length} pages, ${auditResults.issues?.length} issues, ${suggestions.length} AI recommendations`);
+    
+  } catch (error: any) {
+    console.error(`❌ Clean SEO audit failed for ${url}:`, error.message);
+    await storage.failAudit(auditId, `Clean audit failed: ${error.message}`);
+  }
 }
