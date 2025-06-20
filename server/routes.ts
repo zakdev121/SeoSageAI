@@ -24,12 +24,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize session middleware
   app.use(sessionMiddleware);
   
-  // Seed database on startup
-  try {
-    await seedDatabase();
-  } catch (error) {
+  // Seed database on startup (non-blocking)
+  seedDatabase().catch(error => {
     console.log('Database already seeded or seeding failed:', error);
-  }
+  });
 
   // Authentication routes
   app.post('/api/auth/login', async (req, res) => {

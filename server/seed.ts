@@ -63,6 +63,8 @@ export async function seedDatabase() {
     return { tenant: synvizTenant, user: testUser };
   } catch (error) {
     console.error('Seeding failed:', error);
-    throw error;
+    console.log('Database already seeded or seeding failed:', error);
+    // Don't throw error to allow app to start even if seeding fails
+    return null;
   }
 }
