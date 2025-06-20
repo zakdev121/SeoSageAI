@@ -8,10 +8,10 @@ interface LoadingStateProps {
 
 const progressSteps = [
   { id: 1, label: "Crawling website pages", threshold: 10 },
-  { id: 2, label: "Analyzing SEO elements", threshold: 30 },
-  { id: 3, label: "Connecting to Google Search Console", threshold: 50 },
-  { id: 4, label: "Generating AI recommendations", threshold: 70 },
-  { id: 5, label: "Creating PDF report", threshold: 85 }
+  { id: 2, label: "Analyzing SEO elements", threshold: 40 },
+  { id: 3, label: "Performing competitor analysis", threshold: 60 },
+  { id: 4, label: "Generating AI recommendations", threshold: 80 },
+  { id: 5, label: "Finalizing audit results", threshold: 95 }
 ];
 
 export function LoadingState({ auditId }: LoadingStateProps) {

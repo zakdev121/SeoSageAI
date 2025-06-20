@@ -121,33 +121,8 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                 {results.url} • {results.industry} • Analyzed {new Date(results.analyzedAt).toLocaleString()}
               </p>
             </div>
-            <div className="flex space-x-3">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-md text-sm"
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={() => emailAddress && sendEmailMutation.mutate(emailAddress)}
-                  disabled={!emailAddress || sendEmailMutation.isPending}
-                  className="flex items-center space-x-2"
-                >
-                  <i className="fas fa-envelope"></i>
-                  <span>Email Report</span>
-                </Button>
-              </div>
-              <Button 
-                onClick={() => downloadPdfMutation.mutate()}
-                disabled={downloadPdfMutation.isPending}
-                className="bg-primary text-white hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <i className="fas fa-download"></i>
-                <span>Download PDF</span>
-              </Button>
+            <div className="text-sm text-slate-500">
+              Comprehensive SEO analysis and recommendations
             </div>
           </div>
 
