@@ -611,6 +611,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test PageSpeed Insights API endpoint
+  app.get("/api/test/pagespeed", async (req, res) => {
+    try {
+      const { PageSpeedService } = await import('./services/pagespeed.js');
+      const pageSpeedService = new PageSpeedService();
+      const url = req.query.url as string || 'synviz.com';
+      
+      const result = await pageSpeedService.analyzePerformance(url);
+      
+      res.json({
+        success: true,
+        message: "PageSpeed Insights API is working correctly",
+        testResult: result
+      });
+    } catch (error) {
+      console.error('PageSpeed test error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "PageSpeed Insights API test failed"
+      });
+    }
+  });
+
+  // Test Custom Search API endpoint
+  app.get("/api/test/customsearch", async (req, res) => {
+    try {
+      const { CustomSearchService } = await import('./services/customsearch.js');
+      const customSearchService = new CustomSearchService();
+      const industry = req.query.industry as string || 'Tech Services, AI & Automation';
+      
+      const competitors = await customSearchService.searchCompetitors(industry, ['AI automation', 'IT consulting']);
+      const keywordLandscape = await customSearchService.analyzeKeywordLandscape(['AI automation', 'tech consulting']);
+      
+      res.json({
+        success: true,
+        message: "Custom Search API is working correctly",
+        testResult: {
+          competitors,
+          keywordLandscape
+        }
+      });
+    } catch (error) {
+      console.error('Custom Search test error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Custom Search API test failed"
+      });
+    }
+  });
+
   // WordPress API routes for applying SEO fixes with clean engine
   app.post("/api/audits/:id/apply-fix", async (req, res) => {
     try {
