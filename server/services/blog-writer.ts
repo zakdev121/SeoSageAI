@@ -92,7 +92,9 @@ BLOG CONTEXT:
 - Target Keyword: ${topic.targetKeyword}
 - Secondary Keywords: ${topic.secondaryKeywords?.join(', ')}
 - Content Type: ${topic.contentType}
-- Target Length: 3,000 words (comprehensive, in-depth coverage)
+- Target Length: 1,500-3,000 words (MANDATORY: Generate complete, full-length content)
+
+CRITICAL REQUIREMENT: You MUST write the COMPLETE blog post content, not a summary or outline. The "content" field must contain the entire 1,500-3,000 word article with full paragraphs, examples, and detailed explanations.
 
 CONTENT REQUIREMENTS:
 1. HOOK & ENGAGEMENT:
