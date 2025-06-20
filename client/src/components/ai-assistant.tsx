@@ -25,11 +25,25 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   const [isWritingBlog, setIsWritingBlog] = useState(false);
   const [blogContent, setBlogContent] = useState('');
   const [isEditingBlog, setIsEditingBlog] = useState(false);
+  const [currentWordCount, setCurrentWordCount] = useState(0);
   const [customTopic, setCustomTopic] = useState('');
   const [customIndustry, setCustomIndustry] = useState('');
   const [showCustomBlogForm, setShowCustomBlogForm] = useState(false);
   const blogSectionRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Helper function to count words without HTML tags
+  const countWordsWithoutHTML = (htmlContent: string) => {
+    if (!htmlContent) return 0;
+    const textOnly = htmlContent.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return textOnly ? textOnly.split(' ').length : 0;
+  };
+
+  // Update word count whenever blog content changes
+  useEffect(() => {
+    const content = isWritingBlog ? blogContent : (generatedBlogPost?.content || '');
+    setCurrentWordCount(countWordsWithoutHTML(content));
+  }, [blogContent, generatedBlogPost?.content, isWritingBlog]);
 
   // Fetch AI-generated issue resolutions
   const { data: resolutions, isLoading: resolutionsLoading } = useQuery({
@@ -732,20 +746,30 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
           <Card className="border-2 border-blue-200">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {isWritingBlog ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                        AI is Writing Your Blog Post...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-5 w-5 text-green-600" />
-                        Generated Blog Post
-                      </>
-                    )}
-                  </CardTitle>
+                <div className="flex-1">
+                  <div className="flex items-center gap-4 mb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      {isWritingBlog ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                          AI is Writing Your Blog Post...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-5 w-5 text-green-600" />
+                          Generated Blog Post
+                        </>
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 bg-blue-100 px-3 py-1 rounded-full">
+                      <span className="text-sm font-medium text-blue-800">
+                        {currentWordCount.toLocaleString()} words
+                      </span>
+                      {isWritingBlog && (
+                        <span className="text-xs text-blue-600 animate-pulse">writing...</span>
+                      )}
+                    </div>
+                  </div>
                   <CardDescription>
                     {isWritingBlog 
                       ? "Watch as AI writes your SEO-optimized content in real-time"
@@ -811,7 +835,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                     </div>
                     <div>
                       <h4 className="font-semibold text-sm text-gray-700">Word Count</h4>
-                      <p className="text-sm">{Math.round((generatedBlogPost.content?.length || 0) / 5)} words</p>
+                      <p className="text-sm">{countWordsWithoutHTML(generatedBlogPost.content || '')} words</p>
                     </div>
                     <div>
                       <h4 className="font-semibold text-sm text-gray-700">Meta Description</h4>
