@@ -111,7 +111,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   return (
     <div className="space-y-6">
       {/* SEO Improvements Banner */}
-      {fixedIssuesData?.fixedSummary.totalFixed && fixedIssuesData.fixedSummary.totalFixed > 0 && (
+      {fixedIssuesData?.fixedSummary.totalFixed > 0 && (
         <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
