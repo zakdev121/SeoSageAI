@@ -315,7 +315,7 @@ export class WordPressService {
       // Apply the meta description update
       console.log(`Updating meta description for post ${postId}`);
       const updateResponse = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-meta`,
         {
           post_id: postId,
           meta_description: metaDescription
@@ -462,100 +462,139 @@ export class WordPressService {
     }
   }
 
-  async updatePostTitle(postId: number, title: string): Promise<boolean> {
+  async updatePostTitle(postId: number, title: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     try {
-      // Use custom plugin endpoint for title optimization
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/optimize-title`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-title`,
         {
           post_id: postId,
-          optimized_title: title
+          title: title
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.data?.success === true;
-    } catch (error) {
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: `Title updated successfully for post ${postId}`
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data?.message || 'Failed to update title'
+        };
+      }
+    } catch (error: any) {
       console.error('Error updating post title:', error);
-      return false;
+      return {
+        success: false,
+        message: `Error updating title: ${error.message}`
+      };
     }
   }
 
-  async addSchemaMarkup(postId: number, schemaJson: object): Promise<boolean> {
+  async addSchemaMarkup(postId: number, schemaJson: object): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     try {
-      // Get current post content
-      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
-        headers: this.getAuthHeaders()
-      });
-
-      const currentContent = postResponse.data.content.rendered;
-      const schemaScript = `\n<script type="application/ld+json">\n${JSON.stringify(schemaJson, null, 2)}\n</script>`;
-      
-      // Add schema to post content
-      const updatedContent = currentContent + schemaScript;
-
       const response = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
-        {
-          content: updatedContent
-        },
-        { headers: this.getAuthHeaders() }
-      );
-
-      return response.status === 200;
-    } catch (error) {
-      console.error('Error adding schema markup:', error);
-      return false;
-    }
-  }
-
-  async updateImageAltText(postId: number, altTextUpdates: string): Promise<boolean> {
-    try {
-      // Use custom plugin endpoint for alt text updates
-      const response = await axios.post(
-        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/update-alt-text`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/add-schema`,
         {
           post_id: postId,
-          image_updates: JSON.parse(altTextUpdates)
+          schema_data: schemaJson
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.data?.success === true;
-    } catch (error) {
-      console.error('Error updating image alt text:', error);
-      return false;
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: `Schema markup added successfully for post ${postId}`
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data?.message || 'Failed to add schema markup'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error adding schema markup:', error);
+      return {
+        success: false,
+        message: `Error adding schema markup: ${error.message}`
+      };
     }
   }
 
-  async addInternalLinks(postId: number, links: Array<{anchor: string, url: string}>): Promise<boolean> {
+  async updateImageAltText(postId: number, altTextUpdates: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     try {
-      // Get current post content
-      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
-        headers: this.getAuthHeaders()
-      });
-
-      let content = postResponse.data.content.rendered;
-
-      // Add internal links to content
-      links.forEach(link => {
-        const linkHtml = `<a href="${link.url}">${link.anchor}</a>`;
-        // Replace first occurrence of anchor text with link
-        content = content.replace(new RegExp(`\\b${link.anchor}\\b`, 'i'), linkHtml);
-      });
-
       const response = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-alt-text`,
         {
-          content: content
+          post_id: postId,
+          image_updates: altTextUpdates
         },
         { headers: this.getAuthHeaders() }
       );
 
-      return response.status === 200;
-    } catch (error) {
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: `Alt text updated successfully for post ${postId}`
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data?.message || 'Failed to update alt text'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error updating image alt text:', error);
+      return {
+        success: false,
+        message: `Error updating alt text: ${error.message}`
+      };
+    }
+  }
+
+  async addInternalLinks(postId: number, links: Array<{anchor: string, url: string}>): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/add-internal-links`,
+        {
+          post_id: postId,
+          links: links
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: `Internal links added successfully for post ${postId}`
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data?.message || 'Failed to add internal links'
+        };
+      }
+    } catch (error: any) {
       console.error('Error adding internal links:', error);
-      return false;
+      return {
+        success: false,
+        message: `Error adding internal links: ${error.message}`
+      };
     }
   }
 
