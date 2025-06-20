@@ -247,10 +247,170 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
             </TabsContent>
 
             <TabsContent value="performance" className="space-y-6">
-              {results.pageSpeedData && Object.keys(results.pageSpeedData).length > 0 ? (
-                <div className="space-y-6">
+              <div className="space-y-6">
+                {/* Page Performance Metrics */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Page Performance Overview</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {results.pages?.length || 0}
+                      </div>
+                      <div className="text-sm text-slate-600">Total Pages</div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {results.pages?.filter(page => page.images?.length > 0).length || 0}
+                      </div>
+                      <div className="text-sm text-slate-600">Pages with Images</div>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-amber-600">
+                        {results.pages?.reduce((total, page) => total + (page.images?.length || 0), 0) || 0}
+                      </div>
+                      <div className="text-sm text-slate-600">Total Images</div>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {Math.round(results.pages?.reduce((total, page) => total + (page.wordCount || 0), 0) / (results.pages?.length || 1)) || 0}
+                      </div>
+                      <div className="text-sm text-slate-600">Avg Words/Page</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Issues */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Performance-Related Issues</h3>
+                  <div className="space-y-3">
+                    {results.issues
+                      .filter(issue => 
+                        issue.type.toLowerCase().includes('image') ||
+                        issue.type.toLowerCase().includes('content') ||
+                        issue.type.toLowerCase().includes('loading') ||
+                        issue.type.toLowerCase().includes('speed') ||
+                        issue.type.toLowerCase().includes('size'))
+                      .slice(0, 8)
+                      .map((issue, index) => (
+                      <div key={index} className={`p-4 rounded-lg border ${
+                        issue.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                        issue.severity === 'medium' ? 'bg-amber-50 border-amber-200' :
+                        'bg-blue-50 border-blue-200'
+                      }`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900">{issue.type}</h4>
+                            <p className="text-sm text-slate-600 mt-1">{issue.message}</p>
+                            {issue.page && (
+                              <p className="text-xs text-slate-500 mt-1">Page: {issue.page}</p>
+                            )}
+                          </div>
+                          <Badge className={getSeverityColor(issue.severity)}>
+                            {issue.severity}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {results.issues.filter(issue => 
+                      issue.type.toLowerCase().includes('image') ||
+                      issue.type.toLowerCase().includes('content') ||
+                      issue.type.toLowerCase().includes('loading') ||
+                      issue.type.toLowerCase().includes('speed') ||
+                      issue.type.toLowerCase().includes('size')).length === 0 && (
+                      <div className="text-center py-6 bg-green-50 rounded-lg">
+                        <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                        <p className="text-green-800 font-medium">No major performance issues detected</p>
+                        <p className="text-green-600 text-sm">Your site appears to be optimized for performance</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Image Optimization Analysis */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Image Optimization</h3>
+                  <div className="bg-slate-50 rounded-lg p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-slate-900 mb-1">
+                          {results.pages?.reduce((total, page) => {
+                            const missingAlt = page.images?.filter((img: any) => !img.alt).length || 0;
+                            return total + missingAlt;
+                          }, 0) || 0}
+                        </div>
+                        <div className="text-sm text-slate-600">Images Missing Alt Text</div>
+                        <div className="text-xs text-slate-500 mt-1">Affects accessibility & SEO</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-slate-900 mb-1">
+                          {results.pages?.reduce((total, page) => {
+                            const withAlt = page.images?.filter((img: any) => img.alt).length || 0;
+                            return total + withAlt;
+                          }, 0) || 0}
+                        </div>
+                        <div className="text-sm text-slate-600">Optimized Images</div>
+                        <div className="text-xs text-slate-500 mt-1">With proper alt text</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-slate-900 mb-1">
+                          {results.pages?.reduce((total, page) => {
+                            const totalImages = page.images?.length || 0;
+                            const optimized = page.images?.filter((img: any) => img.alt).length || 0;
+                            return totalImages > 0 ? total + Math.round((optimized / totalImages) * 100) : total;
+                          }, 0) / (results.pages?.filter(page => (page.images?.length || 0) > 0).length || 1) || 0}%
+                        </div>
+                        <div className="text-sm text-slate-600">Optimization Rate</div>
+                        <div className="text-xs text-slate-500 mt-1">Overall image optimization</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content Performance */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Content Performance</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Page</TableHead>
+                          <TableHead>Word Count</TableHead>
+                          <TableHead>Images</TableHead>
+                          <TableHead>Links</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {results.pages?.slice(0, 10).map((page, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">
+                              <div className="max-w-xs truncate">
+                                {page.url?.replace(results.url, '') || '/'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className={page.wordCount > 300 ? 'text-green-600' : page.wordCount > 150 ? 'text-amber-600' : 'text-red-600'}>
+                                {page.wordCount || 0}
+                              </span>
+                            </TableCell>
+                            <TableCell>{page.images?.length || 0}</TableCell>
+                            <TableCell>{(page.internalLinks?.length || 0) + (page.externalLinks?.length || 0)}</TableCell>
+                            <TableCell>
+                              <Badge variant={page.wordCount > 300 && page.title && page.metaDescription ? 'default' : 'secondary'}>
+                                {page.wordCount > 300 && page.title && page.metaDescription ? 'Optimized' : 'Needs Work'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* PageSpeed Insights (if available) */}
+                {results.pageSpeedData && Object.keys(results.pageSpeedData).length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">PageSpeed Insights Scores</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">PageSpeed Insights</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-slate-50 rounded-lg p-4 text-center">
                         <div className={`text-2xl font-bold ${results.pageSpeedData.performanceScore >= 90 ? 'text-green-600' : results.pageSpeedData.performanceScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
@@ -278,12 +438,8 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-slate-600">Performance data not available for this audit.</p>
-                </div>
-              )}
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="keywords">
