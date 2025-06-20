@@ -137,13 +137,32 @@ export class ImageService {
       this.createDotPatternSVG(topic)
     ];
 
-    return patterns.slice(0, count).map((svg, index) => ({
-      url: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-      alt: `Generated pattern for ${topic}`,
-      attribution: 'Generated SVG Pattern',
-      width: 800,
-      height: 400
-    }));
+    // Use simple placeholder URLs instead of long base64 strings
+    const simpleImages = [
+      {
+        url: `https://via.placeholder.com/800x400/6366F1/FFFFFF?text=${encodeURIComponent(topic)}`,
+        alt: `${topic} illustration`,
+        attribution: 'Placeholder image',
+        width: 800,
+        height: 400
+      },
+      {
+        url: `https://via.placeholder.com/800x400/059669/FFFFFF?text=Industry+Insights`,
+        alt: 'Industry insights visualization',
+        attribution: 'Placeholder image',
+        width: 800,
+        height: 400
+      },
+      {
+        url: `https://via.placeholder.com/800x400/DC2626/FFFFFF?text=Best+Practices`,
+        alt: 'Best practices diagram',
+        attribution: 'Placeholder image',
+        width: 800,
+        height: 400
+      }
+    ];
+
+    return simpleImages.slice(0, count);
   }
 
   /**
