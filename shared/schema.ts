@@ -1,12 +1,54 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// User authentication and tenant management
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  tenantId: varchar("tenant_id", { length: 50 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("user"), // user, admin
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+export const tenants = pgTable("tenants", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  website: varchar("website", { length: 255 }).notNull(),
+  industry: varchar("industry", { length: 100 }).notNull(),
+  plan: varchar("plan", { length: 50 }).notNull().default("starter"),
+  keywords: jsonb("keywords").$type<string[]>().default([]),
+  apiKeys: jsonb("api_keys").$type<{
+    googleApiKey?: string;
+    googleSearchEngineId?: string;
+    wpUsername?: string;
+    wpPassword?: string;
+  }>().default({}),
+  features: jsonb("features").$type<{
+    auditsPerMonth: number;
+    fixesPerMonth: number;
+    competitorAnalysis: boolean;
+    customReporting: boolean;
+    apiAccess: boolean;
+    whiteLabel: boolean;
+    dedicatedSupport: boolean;
+  }>().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const audits = pgTable("audits", {
   id: serial("id").primaryKey(),
   url: text("url").notNull(),
   industry: text("industry").notNull(),
   email: text("email"),
+  tenantId: varchar("tenant_id", { length: 50 }).notNull(),
+  userId: integer("user_id").references(() => users.id),
   status: text("status").notNull().default("pending"), // pending, processing, completed, failed
   progress: integer("progress").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -22,6 +64,53 @@ export const insertAuditSchema = createInsertSchema(audits).pick({
 
 export type InsertAudit = z.infer<typeof insertAuditSchema>;
 export type Audit = typeof audits.$inferSelect;
+
+// User and tenant types
+export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
+  password: true,
+  name: true,
+  tenantId: true,
+});
+
+export const insertTenantSchema = createInsertSchema(tenants).pick({
+  tenantId: true,
+  name: true,
+  website: true,
+  industry: true,
+  plan: true,
+  keywords: true,
+  apiKeys: true,
+  features: true,
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
+  website: z.string().url(),
+  industry: z.string().min(2),
+  keywords: z.array(z.string()).min(1),
+  plan: z.enum(["starter", "professional", "enterprise"]).default("starter"),
+  apiKeys: z.object({
+    googleApiKey: z.string().optional(),
+    googleSearchEngineId: z.string().optional(),
+    wpUsername: z.string().optional(),
+    wpPassword: z.string().optional(),
+  }).optional(),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = z.infer<typeof insertTenantSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
+export type SignupData = z.infer<typeof signupSchema>;
 
 // SEO Data Types
 export const PageData = z.object({

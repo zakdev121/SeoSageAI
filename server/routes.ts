@@ -17,7 +17,132 @@ import { htmlIntegrityService } from "./services/html-integrity";
 // import { EmailService } from "./services/email"; // Disabled for now
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Tenant detection and registration
+  const { sessionMiddleware, requireAuth, authenticateUser, createUser, getUserById, getTenantById } = await import('./auth.js');
+  const { seedDatabase } = await import('./seed.js');
+  const { loginSchema, signupSchema } = await import('@shared/schema.js');
+  
+  // Initialize session middleware
+  app.use(sessionMiddleware);
+  
+  // Seed database on startup
+  try {
+    await seedDatabase();
+  } catch (error) {
+    console.log('Database already seeded or seeding failed:', error);
+  }
+
+  // Authentication routes
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      
+      const user = await authenticateUser(email, password);
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      req.session.userId = user.id;
+      req.session.tenantId = user.tenantId;
+      req.session.user = user;
+
+      const tenant = await getTenantById(user.tenantId);
+      
+      res.json({
+        success: true,
+        user: user,
+        tenant: tenant,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(400).json({ error: 'Invalid login data' });
+    }
+  });
+
+  app.post('/api/auth/signup', async (req, res) => {
+    try {
+      const signupData = signupSchema.parse(req.body);
+      
+      // Generate tenant ID
+      const tenantId = signupData.name.toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      // Create tenant first
+      const { db } = await import('./db.js');
+      const { tenants } = await import('@shared/schema.js');
+      
+      const [tenant] = await db.insert(tenants).values({
+        tenantId,
+        name: signupData.name,
+        website: signupData.website,
+        industry: signupData.industry,
+        plan: signupData.plan,
+        keywords: signupData.keywords,
+        apiKeys: signupData.apiKeys || {},
+        features: {
+          auditsPerMonth: signupData.plan === 'starter' ? 5 : signupData.plan === 'professional' ? 25 : -1,
+          fixesPerMonth: signupData.plan === 'starter' ? 10 : signupData.plan === 'professional' ? 50 : -1,
+          competitorAnalysis: signupData.plan !== 'starter',
+          customReporting: signupData.plan === 'enterprise',
+          apiAccess: signupData.plan !== 'starter',
+          whiteLabel: signupData.plan === 'enterprise',
+          dedicatedSupport: signupData.plan === 'enterprise',
+        },
+      }).returning();
+
+      // Create user
+      const user = await createUser({
+        email: signupData.email,
+        password: signupData.password,
+        name: signupData.name,
+        tenantId,
+      });
+
+      req.session.userId = user.id;
+      req.session.tenantId = user.tenantId;
+      req.session.user = user;
+
+      res.json({
+        success: true,
+        user: user,
+        tenant: tenant,
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      res.status(400).json({ error: 'Registration failed' });
+    }
+  });
+
+  app.get('/api/auth/me', requireAuth, async (req, res) => {
+    try {
+      const user = await getUserById(req.session.userId!);
+      const tenant = await getTenantById(req.session.tenantId!);
+      
+      if (!user || !tenant) {
+        return res.status(401).json({ error: 'Session invalid' });
+      }
+
+      res.json({
+        user: user,
+        tenant: tenant,
+      });
+    } catch (error) {
+      console.error('Session check error:', error);
+      res.status(500).json({ error: 'Session check failed' });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Legacy tenant detection (now redirects to auth)
   app.post("/api/tenant/detect", async (req, res) => {
     try {
       const { hostname, subdomain } = req.body;
