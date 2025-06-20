@@ -13,6 +13,7 @@ interface ContentChunk {
 
 /**
  * Blog Template Engine - Chunked content generation for better quality
+ * Updated to generate 1500-2000 text words (excluding HTML) using modular prompts
  */
 export class BlogTemplateEngine {
   private openai: OpenAI;
@@ -417,7 +418,7 @@ Return as JSON array with exactly 8 topics.
       }
 
       // Generate images for the article
-      const images = await imageService.generateBlogImages(
+      const images = await imageService.getRelevantImages(
         topic.title,
         imageKeywords
       );
@@ -499,13 +500,6 @@ Return as simple JSON array of strings.
     }
     
     return modifiedContent;
-  }
-
-  /**
-   * Calculate word count (legacy method)
-   */
-  private calculateWordCount(content: string): number {
-    return this.calculateTextWordCount(content);
   }
 
   /**
