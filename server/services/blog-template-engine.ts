@@ -40,18 +40,43 @@ export class BlogTemplateEngine {
     const template = this.selectOptimalTemplate(topic);
     console.log(`Using template: ${template.name} for topic: ${topic.title}`);
 
-    // Generate content using the selected template
-    const content = await this.generateTemplatedContent(topic, template);
+    // Generate content using the selected template with enforced word count
+    let content = await this.generateTemplatedContent(topic, template);
+    let wordCount = this.calculateWordCount(content);
     
-    // Auto-inject relevant images
-    const images = await this.injectRelevantImages(topic, content);
+    console.log(`Initial content generated: ${wordCount} words (target: ${template.targetWordCount})`);
+    
+    // Enforce 3,000-word minimum with iterative expansion
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (wordCount < template.targetWordCount * 0.9 && attempts < maxAttempts) {
+      console.log(`Content too short (${wordCount} words), expanding... (attempt ${attempts + 1}/${maxAttempts})`);
+      const additionalWords = template.targetWordCount - wordCount;
+      content = await this.expandContent(content, topic, template, additionalWords);
+      wordCount = this.calculateWordCount(content);
+      attempts++;
+    }
+    
+    console.log(`Final content: ${wordCount} words after ${attempts} expansion attempts`);
+    
+    // Auto-inject relevant images (with error handling)
+    let images: { content: string; imageData: any[] };
+    try {
+      images = await this.injectRelevantImages(topic, content);
+    } catch (error) {
+      console.log('Image injection failed, using content without images:', error);
+      images = { content, imageData: [] };
+    }
+    
+    const finalWordCount = this.calculateWordCount(images.content);
     
     return {
       title: topic.title,
       content: images.content,
       metaDescription: topic.metaDescription,
       targetKeyword: topic.targetKeyword,
-      wordCount: this.calculateWordCount(images.content),
+      wordCount: finalWordCount,
       readingTime: this.calculateReadingTime(images.content),
       images: images.imageData,
       seoKeywords: topic.seoKeywords,
