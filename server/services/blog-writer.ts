@@ -54,7 +54,7 @@ Current SEO Score: ${auditResults.stats.seoScore}/100
 Current Traffic: ${auditResults.gscData?.totalClicks || 0} clicks
 
 Generated Topics (based on current trends):
-${topics.map(t => `- ${t.title} (${t.targetKeyword})`).join('\n')}
+${Array.isArray(topics) && topics.length > 0 ? topics.map(t => `- ${t.title} (${t.targetKeyword})`).join('\n') : '- No trending topics generated yet'}
 
 Create a comprehensive content strategy that explains:
 1. How these trending topics align with business goals
@@ -451,14 +451,18 @@ export interface BlogStrategy {
 export interface BlogTopic {
   title: string;
   targetKeyword: string;
-  secondaryKeywords?: string[];
-  searchVolume: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  metaDescription: string;
+  seoKeywords: string[];
   contentType: string;
-  wordCount: string;
+  contentAngle: string;
+  targetAudience: string;
+  secondaryKeywords?: string[];
+  searchVolume?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  wordCount?: string;
   outline?: string[];
-  seoGoal: string;
-  estimatedRankingPotential: string;
+  seoGoal?: string;
+  estimatedRankingPotential?: string;
 }
 
 export interface BlogPost {

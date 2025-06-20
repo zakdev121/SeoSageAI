@@ -359,7 +359,12 @@ For each topic, provide:
 - contentAngle: Unique angle or approach
 - targetAudience: Primary audience segment
 
-Return as JSON array with exactly 8 topics.
+Return as JSON object with this exact format:
+{
+  "topics": [
+    { "title": "...", "targetKeyword": "...", "metaDescription": "...", "seoKeywords": [...], "contentType": "...", "contentAngle": "...", "targetAudience": "..." }
+  ]
+}
 `;
 
     try {
