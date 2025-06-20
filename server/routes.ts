@@ -224,13 +224,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard API - Get user's persistent audit data immediately on login
+  app.get("/api/dashboard", async (req, res) => {
+    try {
+      const userId = 1; // Default user for now
+      const audits = await storage.getUserAudits(userId);
+      
+      // Get complete dashboard data for each audit
+      const dashboardData = await Promise.all(
+        audits.map(async (audit) => {
+          const metrics = await storage.getDashboardMetrics(audit.id);
+          const issues = await storage.getSeoIssues(audit.id);
+          const blogs = await storage.getBlogPosts(audit.id);
+          
+          return {
+            audit,
+            metrics,
+            recentIssues: issues.slice(0, 5),
+            recentBlogs: blogs.slice(0, 3),
+            hasResults: audit.status === 'completed' && audit.results,
+            totalIssues: issues.length,
+            activeIssues: issues.filter(i => i.status === 'active').length,
+            fixedIssues: issues.filter(i => i.status === 'fixed').length
+          };
+        })
+      );
+      
+      res.json(dashboardData);
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard" });
+    }
+  });
+
   // Start SEO audit
   app.post("/api/audits", async (req, res) => {
     try {
       const validatedData = insertAuditSchema.parse(req.body);
       
-      // Create audit record
-      const audit = await storage.createAudit(validatedData);
+      // Create audit record with user association
+      const audit = await storage.createAudit({
+        ...validatedData,
+        userId: 1, // Default user for now
+        tenantId: 'synviz'
+      });
       
       // Start background processing with full audit capabilities
       processAudit(audit.id, validatedData.url, validatedData.industry, validatedData.email);

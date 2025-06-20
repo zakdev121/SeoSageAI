@@ -6,11 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthForm } from "@/components/auth-form";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
+import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/" component={Home} />
       <Route component={NotFound} />
     </Switch>
