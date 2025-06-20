@@ -46,7 +46,7 @@ export class BlogTemplateEngine {
     
     console.log(`Initial content generated: ${wordCount} words (target: ${template.targetWordCount})`);
     
-    // Enforce 3,000-word minimum with iterative expansion
+    // Enforce 2,000-word minimum with iterative expansion
     let attempts = 0;
     const maxAttempts = 3;
     
@@ -153,7 +153,7 @@ export class BlogTemplateEngine {
           "decision_framework",
           "conclusion"
         ],
-        targetWordCount: 2600,
+        targetWordCount: 2000,
         seoOptimized: true,
         useCase: "tool comparisons, method analysis, decision making"
       },
@@ -170,7 +170,7 @@ export class BlogTemplateEngine {
           "real_world_examples",
           "conclusion"
         ],
-        targetWordCount: 3200,
+        targetWordCount: 2000,
         seoOptimized: true,
         useCase: "business strategy, planning, execution"
       }
