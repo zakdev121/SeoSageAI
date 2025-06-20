@@ -5,12 +5,20 @@ import { ResultsSection } from "@/components/results-section";
 import { ToastNotifications } from "@/components/toast-notifications";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, BarChart3 } from "lucide-react";
+import { LogOut, BarChart3, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Home() {
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
   const { user, tenant, logout } = useAuth();
+
+  // Check if user has existing audits
+  const { data: dashboardData } = useQuery({
+    queryKey: ["/api/dashboard"],
+  });
+
+  const hasExistingAudits = dashboardData && dashboardData.length > 0;
 
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
@@ -33,16 +41,18 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-sm text-slate-600">{user?.name} ({tenant?.name})</span>
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-1"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Dashboard</span>
-                </Button>
-              </Link>
+              {hasExistingAudits && (
+                <Link href="/dashboard">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-1"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Dashboard</span>
+                  </Button>
+                </Link>
+              )}
               <Button
                 variant="outline"
                 size="sm"

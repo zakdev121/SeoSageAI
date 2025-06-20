@@ -66,7 +66,8 @@ export default function Dashboard() {
   };
 
   const handleNewAuditClick = () => {
-    setShowNewAuditForm(true);
+    // For users with existing audits, navigate to new audit page
+    window.location.href = '/new-audit';
   };
 
   if (isLoading) {
@@ -98,7 +99,7 @@ export default function Dashboard() {
           <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">No audits found</h2>
           <p className="text-gray-600 mb-4">Start your first SEO audit to see dashboard data</p>
-          <Link href="/">
+          <Link href="/new-audit">
             <Button>Start New Audit</Button>
           </Link>
         </div>
