@@ -932,14 +932,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/audits/:id/apply-fix", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { fix } = req.body;
+      const { issueType, pageUrl, optimizedValue } = req.body;
       
       const audit = await storage.getAudit(auditId);
       if (!audit) {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      // Map frontend fix types to SEO engine expected types
+      // Map frontend issue types to fix types
+      const issueTypeMapping = {
+        'Missing Meta Description': 'meta_description',
+        'Missing Title Tag': 'title_tag', 
+        'Long Title Tag': 'title_optimization',
+        'Missing Alt Text': 'alt_text',
+        'Thin Content': 'content_expansion',
+        'Missing Schema Markup': 'schema',
+        'Poor Internal Linking': 'internal_links'
+      };
+
+      const fixType = issueTypeMapping[issueType] || 'meta_description';
+      
+      // Map fix types to SEO engine expected types
       const fixTypeMapping = {
         'meta_description': 'missing_meta_description',
         'title_tag': 'missing_title_tag',
@@ -950,29 +963,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'internal_links': 'poor_internal_linking'
       };
 
-      const mappedFixType = fixTypeMapping[fix.type] || fix.type;
+      const mappedFixType = fixTypeMapping[fixType] || fixType;
       
-      // Use clean SEO engine for safe fix application (Pillar 3)
-      const { seoEngine } = await import('./core/seo-engine-simple.js');
-      const result = await seoEngine.applySafeFix(auditId, mappedFixType, fix.pageUrl || 'https://synviz.com/hire-now/');
+      // Apply the SEO fix using WordPress API
+      const { WordPressService } = await import('./services/wordpress-api.js');
+      const wpService = new WordPressService('https://synviz.com');
+      
+      let result = { success: false, message: 'Fix not applied' };
+      
+      try {
+        // Get the post ID from URL
+        const postId = await wpService.getPostIdFromUrl(pageUrl);
+        
+        if (postId) {
+          // Apply the appropriate fix based on fix type
+          switch (fixType) {
+            case 'meta_description':
+              result = await wpService.updatePostMetaDescription(postId, optimizedValue);
+              break;
+            case 'title_tag':
+              result = await wpService.updatePostTitle(postId, optimizedValue);
+              break;
+            case 'title_optimization':
+              result = await wpService.updatePostTitle(postId, optimizedValue);
+              break;
+            case 'content_expansion':
+              result = await wpService.expandPostContent(postId, optimizedValue);
+              break;
+            case 'alt_text':
+              // Parse alt text updates from optimizedValue
+              const altTextUpdates = JSON.parse(optimizedValue);
+              result = await wpService.updateImageAltText(postId, altTextUpdates);
+              break;
+            default:
+              result = { success: false, message: `Fix type ${fixType} not supported` };
+          }
+        } else {
+          result = { success: false, message: 'Could not find post ID for URL' };
+        }
+      } catch (error: any) {
+        console.error('WordPress API error:', error);
+        result = { success: false, message: error.message || 'WordPress API error' };
+      }
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
-        // Extract page URL from fix context or use default
-        const pageUrl = fix.pageUrl || 'https://synviz.com/top-qualities-of-it-software-company/';
-        
-        // Mark the specific issue as fixed based on the fix type
-        switch (fix.type) {
-          case 'meta_description':
-            await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
+        // Mark the specific issue as fixed based on the issue type
+        switch (issueType) {
+          case 'Missing Meta Description':
+            await storage.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
             console.log(`✓ Marked "Missing Meta Description" as fixed for ${pageUrl}`);
             break;
-          case 'title_tag':
-            await issueTracker.markIssueAsFixed(auditId, 'Missing Title Tag', pageUrl);
+          case 'Missing Title Tag':
+            await storage.markIssueAsFixed(auditId, 'Missing Title Tag', pageUrl);
             console.log(`✓ Marked "Missing Title Tag" as fixed for ${pageUrl}`);
             break;
-          case 'title_optimization':
-            await issueTracker.markIssueAsFixed(auditId, 'Long Title Tag', pageUrl);
+          case 'Long Title Tag':
+            await storage.markIssueAsFixed(auditId, 'Long Title Tag', pageUrl);
             console.log(`✓ Marked "Long Title Tag" as fixed for ${pageUrl}`);
             break;
           case 'alt_text':

@@ -4,7 +4,8 @@
  * /synviz/v1/update-alt-text, /synviz/v1/expand-content
  */
 
-import { WordPressService } from './server/services/wordpress-api.js';
+// Test script for Synviz WordPress plugin endpoints
+const axios = require('axios');
 
 async function testSynvizWordPressAPI() {
   console.log('🧪 Testing Synviz WordPress Plugin API Integration\n');
