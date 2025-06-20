@@ -159,8 +159,8 @@ Return as JSON: {
 Based on this blog topic, suggest 5-7 specific image search keywords that would be most relevant and visually appealing:
 
 Topic: ${topic.title}
-Industry: ${topic.industry || 'general'}
-Keywords: ${topic.keywords?.join(', ') || topic.targetKeyword}
+Content Type: ${topic.contentType}
+Keywords: ${topic.seoKeywords?.join(', ') || topic.targetKeyword}
 Type: ${topic.contentType}
 
 Provide image keywords that are:
@@ -187,7 +187,7 @@ Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
       // Fallback to topic-based keywords
       return [
         topic.title.split(' ').slice(0, 2).join(' '),
-        topic.industry || 'business',
+        topic.contentType || 'business',
         'professional',
         'technology',
         'teamwork'
@@ -343,34 +343,59 @@ Make the content authoritative, engaging, and optimized for search engines while
       const result = JSON.parse(response.choices[0].message.content || '{"post": {}}');
       const blogPost = result.post;
 
-      // Auto-inject relevant images using GPT-determined keywords
-      try {
-        const imageKeywords = await this.getImageKeywordsFromGPT(topic);
-        const images = await imageService.getRelevantImages(
-          topic.title, 
-          imageKeywords, 
-          3 // Get 3 images for the blog post
-        );
+      // Complete the blog post structure with required properties
+      const completePost: BlogPost = {
+        title: blogPost.title || topic.title,
+        metaDescription: blogPost.metaDescription || topic.metaDescription,
+        slug: blogPost.slug || topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        content: blogPost.content || '',
+        headings: {
+          h1: blogPost.title || topic.title,
+          h2: [],
+          h3: []
+        },
+        internalLinks: [],
+        featuredSnippetOptimization: {
+          question: `What is ${topic.targetKeyword}?`,
+          answer: blogPost.metaDescription || topic.metaDescription,
+          format: 'paragraph'
+        },
+        faq: [],
+        callToAction: 'Contact us to learn more about implementing these strategies for your business.'
+      };
+
+      // Extract headings from content if available
+      if (completePost.content) {
+        const h2Matches = completePost.content.match(/<h2[^>]*>(.*?)<\/h2>/g) || [];
+        const h3Matches = completePost.content.match(/<h3[^>]*>(.*?)<\/h3>/g) || [];
         
-        if (images.length > 0 && blogPost.content) {
-          blogPost.content = imageService.injectImagesIntoContent(blogPost.content, images);
-          
-          // Add image metadata to the blog post
-          blogPost.images = images.map(img => ({
-            url: img.url,
-            alt: img.alt,
-            attribution: img.attribution
-          }));
-        }
-      } catch (imageError) {
-        console.error('Error auto-injecting images:', imageError);
-        // Continue without images rather than failing the entire blog generation
+        completePost.headings.h2 = h2Matches.map(h => h.replace(/<[^>]*>/g, ''));
+        completePost.headings.h3 = h3Matches.map(h => h.replace(/<[^>]*>/g, ''));
       }
 
-      return blogPost;
+      return completePost;
     } catch (error) {
       console.error('Error writing blog post:', error);
-      return {} as BlogPost;
+      // Return a complete fallback BlogPost structure
+      return {
+        title: topic.title,
+        metaDescription: topic.metaDescription,
+        slug: topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        content: `<h1>${topic.title}</h1><p>${topic.metaDescription}</p>`,
+        headings: {
+          h1: topic.title,
+          h2: [],
+          h3: []
+        },
+        internalLinks: [],
+        featuredSnippetOptimization: {
+          question: `What is ${topic.targetKeyword}?`,
+          answer: topic.metaDescription,
+          format: 'paragraph'
+        },
+        faq: [],
+        callToAction: 'Contact us to learn more about implementing these strategies for your business.'
+      };
     }
   }
 

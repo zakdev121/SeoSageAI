@@ -565,15 +565,29 @@ export interface BlogTopic {
 
 export interface BlogPost {
   title: string;
-  content: string;
   metaDescription: string;
-  targetKeyword: string;
-  wordCount: number;
-  readingTime: number;
-  images: any[];
-  seoKeywords: string[];
-  template: string;
-  createdAt: string;
+  slug: string;
+  content: string;
+  headings: {
+    h1: string;
+    h2: string[];
+    h3: string[];
+  };
+  internalLinks: Array<{
+    anchorText: string;
+    targetPage: string;
+    context: string;
+  }>;
+  featuredSnippetOptimization: {
+    question: string;
+    answer: string;
+    format: string;
+  };
+  faq: Array<{
+    question: string;
+    answer: string;
+  }>;
+  callToAction: string;
 }
 
 export const blogTemplateEngine = new BlogTemplateEngine();
