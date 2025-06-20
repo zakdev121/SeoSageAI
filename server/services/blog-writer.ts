@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { AuditResultsType } from '@shared/schema';
-import { imageService, type ImageResult } from './image-service';
+import { blogTemplateEngine, BlogTopic } from './blog-template-engine';
+import { trendResearch } from './trend-research';
 
 export class BlogWriterService {
   private openai: OpenAI;
@@ -12,75 +13,136 @@ export class BlogWriterService {
   }
 
   async generateBlogStrategy(auditResults: AuditResultsType): Promise<BlogStrategy> {
-    const topQueries = auditResults.gscData?.topQueries?.slice(0, 15) || [];
+    console.log('Generating trending blog strategy with real-time insights...');
+    
+    // Extract GSC keyword data for trend research
+    const gscKeywords = auditResults.gscData?.topQueries?.slice(0, 15) || [];
     const keywordOpportunities = auditResults.keywordOpportunities?.slice(0, 10) || [];
 
-    const prompt = `
-You are an expert content strategist. Based on this SEO audit data for ${auditResults.url}, create a comprehensive blog strategy to improve SEO performance.
+    try {
+      // Generate trending topics using template engine and trend research
+      const trendingTopics = await blogTemplateEngine.generateTrendingTopics(
+        auditResults.industry, 
+        gscKeywords
+      );
 
-Current Performance:
-- Industry: ${auditResults.industry}
-- SEO Score: ${auditResults.stats.seoScore}/100
-- Current clicks: ${auditResults.gscData?.totalClicks || 0}
-- Average position: ${auditResults.gscData?.avgPosition || 'N/A'}
+      // Generate strategy overview with current performance context
+      const strategy = await this.generateStrategyOverview(auditResults, trendingTopics);
 
-Top Performing Queries:
-${topQueries.map(q => `- "${q.query}" (Position: ${q.position.toFixed(1)}, ${q.clicks} clicks)`).join('\n')}
-
-Keyword Opportunities:
-${keywordOpportunities.map(k => `- "${k.keyword}" (${k.searchVolume} searches, ${k.competition} competition)`).join('\n')}
-
-Create a blog strategy focusing on improving SEO through targeted content. Respond with JSON:
-
-{
-  "strategy": {
-    "overview": "Strategic approach to blog content for SEO improvement",
-    "targetAudience": "Primary audience description",
-    "contentPillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
-    "publishingFrequency": "Recommended posting schedule"
-  },
-  "blogTopics": [
-    {
-      "title": "Compelling blog post title",
-      "targetKeyword": "primary keyword",
-      "secondaryKeywords": ["keyword1", "keyword2"],
-      "searchVolume": "estimated monthly searches",
-      "difficulty": "easy|medium|hard",
-      "contentType": "how-to|comparison|case-study|news|opinion",
-      "wordCount": "recommended word count",
-      "outline": ["H2 section 1", "H2 section 2", "H2 section 3"],
-      "seoGoal": "what this post aims to achieve",
-      "estimatedRankingPotential": "position 1-3|4-10|11-20"
+      return {
+        strategy,
+        blogTopics: trendingTopics
+      };
+    } catch (error) {
+      console.error('Error generating trending blog strategy:', error);
+      
+      // Fallback to basic strategy if trend research fails
+      return await this.generateBasicStrategy(auditResults);
     }
-  ]
-}
+  }
 
-Provide 8-12 blog topic ideas that target different keyword opportunities and address SEO weaknesses.
+  /**
+   * Generate comprehensive strategy overview
+   */
+  private async generateStrategyOverview(auditResults: AuditResultsType, topics: BlogTopic[]): Promise<any> {
+    const prompt = `
+Based on this SEO audit data and trending blog topics, create a strategic overview:
+
+Website: ${auditResults.url}
+Industry: ${auditResults.industry}
+Current SEO Score: ${auditResults.stats.seoScore}/100
+Current Traffic: ${auditResults.gscData?.totalClicks || 0} clicks
+
+Generated Topics (based on current trends):
+${topics.map(t => `- ${t.title} (${t.targetKeyword})`).join('\n')}
+
+Create a comprehensive content strategy that explains:
+1. How these trending topics align with business goals
+2. Target audience segmentation
+3. Content pillar strategy
+4. Publishing frequency recommendations
+5. Expected SEO impact timeline
+
+Return as JSON: {
+  "overview": "Strategic overview paragraph",
+  "targetAudience": "Primary audience description", 
+  "contentPillars": ["pillar1", "pillar2", "pillar3"],
+  "publishingFrequency": "Recommended schedule"
+}
 `;
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert content strategist creating SEO-focused blog strategies. Always respond with valid JSON."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
-        temperature: 0.4
+        max_tokens: 800
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"strategy": {}, "blogTopics": []}');
-      return result;
+      return JSON.parse(response.choices[0].message.content || '{}');
     } catch (error) {
-      console.error('Error generating blog strategy:', error);
-      return { strategy: {}, blogTopics: [] };
+      console.error('Error generating strategy overview:', error);
+      return {
+        overview: `Strategic content approach for ${auditResults.industry} industry focusing on trending topics and SEO optimization`,
+        targetAudience: "Business professionals and decision makers",
+        contentPillars: ["Industry Insights", "Best Practices", "Innovation Trends"],
+        publishingFrequency: "2-3 posts per week"
+      };
     }
+  }
+
+  /**
+   * Fallback basic strategy generation
+   */
+  private async generateBasicStrategy(auditResults: AuditResultsType): Promise<BlogStrategy> {
+    const topQueries = auditResults.gscData?.topQueries?.slice(0, 8) || [];
+    const keywordOpportunities = auditResults.keywordOpportunities?.slice(0, 5) || [];
+
+    const basicTopics: BlogTopic[] = [
+      ...topQueries.map(q => ({
+        title: this.createTitleFromKeyword(q.query),
+        targetKeyword: q.query,
+        metaDescription: `Comprehensive guide to ${q.query} - expert insights and best practices`,
+        contentType: 'guide' as const
+      })),
+      ...keywordOpportunities.map(k => ({
+        title: this.createTitleFromKeyword(k.keyword),
+        targetKeyword: k.keyword,
+        metaDescription: `Everything you need to know about ${k.keyword} - practical advice and strategies`,
+        contentType: 'analysis' as const
+      }))
+    ].slice(0, 8);
+
+    return {
+      strategy: {
+        overview: `Content strategy targeting high-opportunity keywords for ${auditResults.industry}`,
+        targetAudience: "Industry professionals and potential customers",
+        contentPillars: ["Educational Content", "Industry Insights", "Practical Guides"],
+        publishingFrequency: "Weekly"
+      },
+      blogTopics: basicTopics
+    };
+  }
+
+  /**
+   * Create SEO-optimized title from keyword
+   */
+  private createTitleFromKeyword(keyword: string): string {
+    const words = keyword.split(' ');
+    const capitalized = words.map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+    
+    const titlePrefixes = [
+      'Complete Guide to',
+      'Ultimate Guide to',
+      'Everything About',
+      'Mastering',
+      'Understanding'
+    ];
+    
+    const prefix = titlePrefixes[Math.floor(Math.random() * titlePrefixes.length)];
+    return `${prefix} ${capitalized}`;
   }
 
   /**
@@ -127,7 +189,25 @@ Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
     }
   }
 
-  async writeBlogPost(topic: BlogTopic, auditResults: AuditResultsType): Promise<BlogPost> {
+  async writeBlogPost(topic: any, auditResults: AuditResultsType): Promise<BlogPost> {
+    console.log('Generating blog post using template engine...');
+    
+    try {
+      // Use the new template engine for consistent, professional blog generation
+      const blogPost = await blogTemplateEngine.generateBlogPost(topic);
+      return blogPost;
+    } catch (error) {
+      console.error('Error using template engine, falling back to direct generation:', error);
+      
+      // Fallback to direct generation if template engine fails
+      return await this.generateBlogPostDirect(topic, auditResults);
+    }
+  }
+
+  /**
+   * Direct blog post generation (fallback method)
+   */
+  private async generateBlogPostDirect(topic: any, auditResults: AuditResultsType): Promise<BlogPost> {
     const prompt = `
 You are an expert content writer and SEO specialist. Write an exceptional, highly engaging blog post that will rank on page 1 of Google and drive significant organic traffic.
 
