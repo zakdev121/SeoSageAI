@@ -66,8 +66,7 @@ export default function Dashboard() {
   };
 
   const handleNewAuditClick = () => {
-    // For users with existing audits, navigate to new audit page
-    window.location.href = '/new-audit';
+    setShowNewAuditForm(true);
   };
 
   if (isLoading) {
@@ -156,9 +155,17 @@ export default function Dashboard() {
         {/* Audit Form for new audits - only show when requested */}
         {showNewAuditForm && (
           <div className="mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Start New SEO Audit</CardTitle>
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-blue-900">Start New SEO Audit</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNewAuditForm(false)}
+                  className="text-slate-600 border-slate-300"
+                >
+                  Cancel
+                </Button>
               </CardHeader>
               <CardContent>
                 <AuditForm onAuditStart={handleAuditStart} />
