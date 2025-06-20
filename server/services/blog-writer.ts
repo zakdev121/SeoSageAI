@@ -84,59 +84,105 @@ Provide 8-12 blog topic ideas that target different keyword opportunities and ad
 
   async writeBlogPost(topic: BlogTopic, auditResults: AuditResultsType): Promise<BlogPost> {
     const prompt = `
-Write a comprehensive, SEO-optimized blog post based on this topic for ${auditResults.url}.
+You are an expert content writer and SEO specialist. Write an exceptional, highly engaging blog post that will rank on page 1 of Google and drive significant organic traffic.
 
-Blog Topic Details:
-- Title: ${topic.title}
+BLOG CONTEXT:
+- Website: ${auditResults.url}
+- Industry: ${auditResults.industry}
 - Target Keyword: ${topic.targetKeyword}
 - Secondary Keywords: ${topic.secondaryKeywords?.join(', ')}
 - Content Type: ${topic.contentType}
-- Target Word Count: ${topic.wordCount}
-- Industry Context: ${auditResults.industry}
+- Target Length: 3,000 words (comprehensive, in-depth coverage)
+
+CONTENT REQUIREMENTS:
+1. HOOK & ENGAGEMENT:
+   - Start with a compelling hook that immediately grabs attention
+   - Use conversational, engaging tone that connects with readers
+   - Include data, statistics, or surprising facts early
+   - Address reader pain points and promise clear solutions
+
+2. SEO OPTIMIZATION:
+   - Naturally integrate target keyword 8-12 times throughout content
+   - Use semantic keywords and LSI terms related to the topic
+   - Optimize for search intent (informational, commercial, transactional)
+   - Include keyword in first 100 words, headings, and conclusion
+
+3. CONTENT STRUCTURE:
+   - Write scannable content with short paragraphs (2-3 sentences max)
+   - Use bullet points, numbered lists, and subheadings
+   - Include actionable takeaways and practical tips
+   - Add real-world examples and case studies when relevant
+
+4. ENGAGEMENT FACTORS:
+   - Write in active voice with strong, descriptive verbs
+   - Include rhetorical questions to engage readers
+   - Use transitional phrases for smooth flow
+   - Add personal insights and expert opinions
+
+5. VALUE & AUTHORITY:
+   - Provide comprehensive coverage of the topic
+   - Include latest industry trends and best practices
+   - Reference credible sources and statistics
+   - Offer unique insights not found elsewhere
+
+6. CONVERSION OPTIMIZATION:
+   - Include clear, compelling calls-to-action
+   - Guide readers toward next steps
+   - Build trust through expertise demonstration
 
 Outline to follow:
 ${topic.outline?.join('\n')}
 
-Requirements:
-1. Write engaging, informative content that naturally incorporates keywords
-2. Include proper heading structure (H1, H2, H3)
-3. Add meta description and title tag
-4. Include internal linking suggestions
-5. Optimize for featured snippets where possible
-6. Include a compelling introduction and conclusion
-7. Add FAQ section if relevant
+WRITING GUIDELINES FOR 3,000 WORDS:
+- Introduction: 300-400 words with strong hook and problem statement
+- Main body: 2,200-2,400 words with 6-8 detailed sections
+- Conclusion: 300-400 words with summary and strong CTA
+- Use data, examples, case studies throughout
+- Include actionable tips and step-by-step processes
+- Add industry insights and expert opinions
+- Ensure smooth transitions between sections
 
 Respond with JSON:
 {
   "post": {
-    "title": "SEO-optimized title (55-60 characters)",
-    "metaDescription": "Compelling meta description (150-160 characters)",
-    "slug": "url-friendly-slug",
-    "content": "Full blog post content with proper HTML formatting",
+    "title": "SEO-optimized title (55-60 characters) with target keyword",
+    "metaDescription": "Compelling meta description (150-160 characters) that drives clicks",
+    "slug": "seo-friendly-url-slug-with-target-keyword",
+    "content": "Complete 3,000-word blog post with proper HTML formatting including <h2>, <h3>, <p>, <ul>, <ol>, <strong>, <em> tags. Use short paragraphs (2-3 sentences). Include bullet points, numbered lists, and subheadings for scannability. Add relevant statistics, examples, and actionable insights throughout.",
     "headings": {
-      "h1": "Main heading",
-      "h2": ["List of H2 headings"],
-      "h3": ["List of H3 headings"]
+      "h1": "Main H1 title with target keyword",
+      "h2": ["List of 6-8 H2 section headings with semantic keywords"],
+      "h3": ["List of H3 subheadings for detailed breakdowns"]
     },
     "internalLinks": [
       {
-        "anchorText": "suggested anchor text",
-        "targetPage": "suggested internal page to link to",
-        "context": "why this link adds value"
+        "anchorText": "natural anchor text with keywords",
+        "targetPage": "/suggested-internal-page-url",
+        "context": "Strategic reason for this internal link placement"
       }
     ],
     "featuredSnippetOptimization": {
-      "question": "Question this content answers",
-      "answer": "Concise answer (40-50 words)",
+      "question": "Direct question this content definitively answers",
+      "answer": "Concise, authoritative answer (40-50 words) formatted for snippets",
       "format": "paragraph|list|table"
     },
     "faq": [
       {
-        "question": "Relevant question",
-        "answer": "Clear, concise answer"
+        "question": "Highly relevant question readers would search for",
+        "answer": "Clear, comprehensive answer with keywords naturally included"
       }
     ],
-    "callToAction": "Compelling CTA that aligns with business goals"
+    "keywordDensity": {
+      "targetKeyword": "8-12 natural mentions throughout content",
+      "semanticKeywords": ["list", "of", "related", "terms", "used"],
+      "lsiKeywords": ["latent", "semantic", "indexing", "terms"]
+    },
+    "contentStructure": {
+      "introduction": "Hook + problem + solution preview (300-400 words)",
+      "mainSections": ["Section 1 focus", "Section 2 focus", "etc"],
+      "conclusion": "Summary + key takeaways + CTA (300-400 words)"
+    },
+    "callToAction": "Compelling, specific CTA that drives business goals and includes urgency"
   }
 }
 
