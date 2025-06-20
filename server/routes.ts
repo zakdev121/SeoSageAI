@@ -1432,10 +1432,10 @@ function calculateSEOScore(pages: any[], issues: any[]): number {
   // Handle edge case of no pages crawled
   if (!pages || pages.length === 0) {
     console.log('SEO Score calculation: No pages crawled, returning minimum score');
-    return 15; // Minimum score when no pages are available
+    return 10; // Minimum score when no pages are available
   }
   
-  let totalScore = 100;
+  let score = 100;
   
   // Count issues by severity
   const criticalIssues = issues.filter(i => i.severity === 'critical').length;
@@ -1444,37 +1444,16 @@ function calculateSEOScore(pages: any[], issues: any[]): number {
   
   console.log(`SEO Score calculation: Critical: ${criticalIssues}, Medium: ${mediumIssues}, Low: ${lowIssues}`);
   
-  // Calculate more aggressive penalties for issues
-  const totalPages = pages.length;
+  // Simple deduction formula
+  score -= (criticalIssues * 5);
+  score -= (mediumIssues * 2);
+  score -= (lowIssues * 0.5);
   
-  // Direct deductions based on actual issue counts (not capped at low values)
-  totalScore -= criticalIssues * 5;  // 5 points per critical issue
-  totalScore -= mediumIssues * 1.5;  // 1.5 points per medium issue  
-  totalScore -= lowIssues * 0.5;     // 0.5 points per low issue
+  // Ensure minimum score of 10
+  const finalScore = Math.max(score, 10);
   
-  // Additional penalties for high issue density
-  const issueRatio = (criticalIssues + mediumIssues + lowIssues) / totalPages;
-  if (issueRatio > 1) {
-    totalScore -= (issueRatio - 1) * 20; // Heavy penalty for more than 1 issue per page
-  }
-  
-  // Calculate good practice coverage
-  const pagesWithTitles = pages.filter(p => p.title && p.title.trim().length > 0).length;
-  const pagesWithMeta = pages.filter(p => p.metaDescription && p.metaDescription.trim().length > 0).length;
-  const pagesWithH1 = pages.filter(p => p.h1 && p.h1.length > 0).length;
-  
-  const titleRatio = pagesWithTitles / totalPages;
-  const metaRatio = pagesWithMeta / totalPages;
-  const h1Ratio = pagesWithH1 / totalPages;
-  
-  // Smaller bonus points (good practices are expected, not exceptional)
-  totalScore += titleRatio * 5; // Up to 5 points for good titles
-  totalScore += metaRatio * 5;  // Up to 5 points for meta descriptions  
-  totalScore += h1Ratio * 3;    // Up to 3 points for H1 tags
-  
-  const finalScore = Math.max(10, Math.min(100, Math.round(totalScore))); // Minimum score of 10
-  console.log(`Final SEO Score: ${finalScore} (Title coverage: ${Math.round(titleRatio*100)}%, Meta coverage: ${Math.round(metaRatio*100)}%, H1 coverage: ${Math.round(h1Ratio*100)}%)`);
-  console.log(`Score breakdown: Base(100) - Critical(${criticalIssues * 5}) - Medium(${mediumIssues * 1.5}) - Low(${lowIssues * 0.5}) + Bonuses = ${finalScore}`);
+  console.log(`Final SEO Score: ${finalScore}`);
+  console.log(`Score breakdown: Base(100) - Critical(${criticalIssues * 5}) - Medium(${mediumIssues * 2}) - Low(${lowIssues * 0.5}) = ${finalScore}`);
   
   return finalScore;
 }

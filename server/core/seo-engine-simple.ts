@@ -294,24 +294,22 @@ export class SEOEngine {
   }
 
   private calculateSEOScore(pages: PageDataType[], issues: SEOIssueType[]): number {
-    if (pages.length === 0) return 0;
+    if (pages.length === 0) return 10;
     
-    const totalPages = pages.length;
-    const totalIssues = issues.length;
+    let score = 100;
     
-    // Base score calculation
-    const baseScore = Math.max(0, 100 - (totalIssues * 10));
+    // Count issues by severity
+    const criticalIssues = issues.filter(i => i.severity === 'critical').length;
+    const mediumIssues = issues.filter(i => i.severity === 'medium').length;
+    const lowIssues = issues.filter(i => i.severity === 'low').length;
     
-    // Bonus for good practices
-    let bonusPoints = 0;
-    pages.forEach(page => {
-      if (page.metaDescription && page.metaDescription.length >= 150) bonusPoints += 2;
-      if (page.h1 && page.h1.length > 0) bonusPoints += 3;
-      if (page.wordCount >= 500) bonusPoints += 2;
-      if (page.internalLinks.length >= 5) bonusPoints += 1;
-    });
+    // Simple deduction formula
+    score -= (criticalIssues * 5);
+    score -= (mediumIssues * 2);
+    score -= (lowIssues * 0.5);
     
-    return Math.min(100, Math.max(0, baseScore + (bonusPoints / totalPages)));
+    // Ensure minimum score of 10
+    return Math.max(score, 10);
   }
 
   private async validatePageIntegrity(pageUrl: string): Promise<any> {
