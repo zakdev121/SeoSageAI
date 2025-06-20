@@ -448,7 +448,7 @@ export class WordPressService {
       }
 
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-meta`,
         updatePayload,
         { headers: this.getAuthHeaders() }
       );
@@ -598,11 +598,13 @@ export class WordPressService {
     }
   }
 
-  async expandPostContent(postId: number, additionalContent: string): Promise<boolean> {
+  async expandPostContent(postId: number, additionalContent: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     try {
-      // Use custom plugin endpoint for content expansion
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/expand-content`,
+        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/expand-content`,
         {
           post_id: postId,
           additional_content: additionalContent
@@ -610,10 +612,23 @@ export class WordPressService {
         { headers: this.getAuthHeaders() }
       );
 
-      return response.data?.success === true;
-    } catch (error) {
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: `Content expanded successfully for post ${postId}`
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data?.message || 'Failed to expand content'
+        };
+      }
+    } catch (error: any) {
       console.error('Error expanding post content:', error);
-      return false;
+      return {
+        success: false,
+        message: `Error expanding content: ${error.message}`
+      };
     }
   }
 
@@ -648,16 +663,19 @@ export class WordPressService {
           break;
 
         case 'title_tag':
-          success = await this.updatePostTitle(targetPostId, fix.newValue);
-          message = success ? 'Title updated successfully' : 'Failed to update title';
+          const titleResult = await this.updatePostTitle(targetPostId, fix.newValue);
+          success = titleResult.success;
+          message = titleResult.message;
           break;
 
         case 'schema':
           try {
             const schemaData = JSON.parse(fix.newValue);
-            success = await this.addSchemaMarkup(fix.postId, schemaData);
-            message = success ? 'Schema markup added successfully' : 'Failed to add schema markup';
+            const schemaResult = await this.addSchemaMarkup(fix.postId, schemaData);
+            success = schemaResult.success;
+            message = schemaResult.message;
           } catch {
+            success = false;
             message = 'Invalid schema JSON format';
           }
           break;
@@ -665,28 +683,33 @@ export class WordPressService {
         case 'internal_links':
           try {
             const links = JSON.parse(fix.newValue);
-            success = await this.addInternalLinks(fix.postId, links);
-            message = success ? 'Internal links added successfully' : 'Failed to add internal links';
+            const linksResult = await this.addInternalLinks(fix.postId, links);
+            success = linksResult.success;
+            message = linksResult.message;
           } catch {
+            success = false;
             message = 'Invalid links format';
           }
           break;
 
         case 'alt_text':
-          success = await this.updateImageAltText(fix.postId, fix.newValue);
-          message = success ? 'Image alt text updated successfully' : 'Failed to update alt text';
+          const altResult = await this.updateImageAltText(fix.postId, fix.newValue);
+          success = altResult.success;
+          message = altResult.message;
           break;
 
         case 'title_optimization':
           // Optimize long titles by shortening while preserving key information
-          success = await this.updatePostTitle(targetPostId, fix.newValue);
-          message = success ? 'Title optimized successfully' : 'Failed to optimize title';
+          const titleOptResult = await this.updatePostTitle(targetPostId, fix.newValue);
+          success = titleOptResult.success;
+          message = titleOptResult.message;
           break;
 
         case 'content_expansion':
           // Expand thin content with additional relevant information
-          success = await this.expandPostContent(targetPostId, fix.newValue);
-          message = success ? 'Content expanded successfully' : 'Failed to expand content';
+          const contentResult = await this.expandPostContent(targetPostId, fix.newValue);
+          success = contentResult.success;
+          message = contentResult.message;
           break;
 
         default:

@@ -1001,23 +1001,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced batch SEO fix application with custom WordPress plugin endpoints
   app.post("/api/audits/:id/apply-fixes-batch", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { fixes } = req.body;
+      const { fixes, siteUrl = 'https://synviz.com' } = req.body;
       
       const audit = await storage.getAudit(auditId);
       if (!audit) {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      const wpService = new WordPressService('https://synviz.com');
-      const results = await wpService.batchApplyFixes(fixes);
+      const wpService = new WordPressService(siteUrl);
       
-      res.json({ results });
-    } catch (error) {
-      console.error('Error applying SEO fixes:', error);
-      res.status(500).json({ error: 'Failed to apply SEO fixes' });
+      // Test connection to ensure SEO Agent plugin is available
+      const canConnect = await wpService.testConnection();
+      if (!canConnect) {
+        return res.status(400).json({
+          error: 'Unable to connect to WordPress site. Please ensure the SEO Agent plugin is installed and activated.'
+        });
+      }
+
+      const results = [];
+      let successCount = 0;
+      let criticalFixed = 0;
+      let mediumFixed = 0;
+      let quickWinFixed = 0;
+
+      // Process fixes by priority: Critical -> Medium -> Quick Wins
+      const sortedFixes = fixes.sort((a, b) => {
+        const priorityOrder = { 'critical': 1, 'medium': 2, 'low': 3 };
+        return (priorityOrder[a.severity] || 3) - (priorityOrder[b.severity] || 3);
+      });
+
+      for (const fix of sortedFixes) {
+        try {
+          console.log(`Applying ${fix.severity} SEO fix: ${fix.type} for ${fix.pageUrl || 'default page'}`);
+          
+          let result;
+          
+          switch (fix.type) {
+            case 'meta_description':
+              result = await wpService.updatePostMetaDescription(fix.postId || 0, fix.newValue);
+              break;
+              
+            case 'title_tag':
+            case 'title_optimization':
+              result = await wpService.updatePostTitle(fix.postId || 0, fix.newValue);
+              break;
+              
+            case 'alt_text':
+              result = await wpService.updateImageAltText(fix.postId || 0, fix.newValue);
+              break;
+              
+            case 'schema':
+              try {
+                const schemaData = typeof fix.newValue === 'string' ? JSON.parse(fix.newValue) : fix.newValue;
+                result = await wpService.addSchemaMarkup(fix.postId || 0, schemaData);
+              } catch (parseError) {
+                result = { success: false, message: 'Invalid schema JSON format' };
+              }
+              break;
+              
+            case 'internal_links':
+              try {
+                const links = typeof fix.newValue === 'string' ? JSON.parse(fix.newValue) : fix.newValue;
+                result = await wpService.addInternalLinks(fix.postId || 0, links);
+              } catch (parseError) {
+                result = { success: false, message: 'Invalid links format' };
+              }
+              break;
+              
+            case 'content_expansion':
+              result = await wpService.expandPostContent(fix.postId || 0, fix.newValue);
+              break;
+              
+            default:
+              result = { success: false, message: `Unsupported fix type: ${fix.type}` };
+          }
+
+          if (result.success) {
+            // Mark issue as fixed in database
+            if (fix.issueId) {
+              await storage.markSeoIssueAsFixed(fix.issueId);
+            }
+            
+            // Track fix in legacy system for compatibility
+            const pageUrl = fix.pageUrl || audit.url;
+            await storage.markIssueAsFixed(auditId, fix.type, pageUrl);
+            
+            successCount++;
+            
+            // Count by severity
+            switch (fix.severity) {
+              case 'critical': criticalFixed++; break;
+              case 'medium': mediumFixed++; break;
+              case 'low': quickWinFixed++; break;
+            }
+            
+            console.log(`✓ Successfully applied ${fix.type} fix (${fix.severity})`);
+          } else {
+            console.log(`✗ Failed to apply ${fix.type} fix: ${result.message}`);
+          }
+
+          results.push({
+            ...fix,
+            result,
+            appliedAt: new Date().toISOString()
+          });
+          
+          // Add delay between fixes to prevent overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error: any) {
+          console.error(`Error applying ${fix.type} fix:`, error);
+          results.push({
+            ...fix,
+            result: {
+              success: false,
+              message: `Error applying fix: ${error.message}`
+            }
+          });
+        }
+      }
+
+      // Generate comprehensive summary
+      const summary = {
+        totalFixes: fixes.length,
+        successCount,
+        failureCount: fixes.length - successCount,
+        criticalFixed,
+        mediumFixed,
+        quickWinFixed,
+        successRate: Math.round((successCount / fixes.length) * 100)
+      };
+
+      res.json({
+        success: successCount > 0,
+        message: `Applied ${successCount} out of ${fixes.length} SEO fixes successfully`,
+        summary,
+        results,
+        recommendations: {
+          critical: criticalFixed > 0 ? `Fixed ${criticalFixed} critical issues that significantly impact SEO` : 'No critical issues addressed',
+          medium: mediumFixed > 0 ? `Resolved ${mediumFixed} medium priority optimizations` : 'No medium priority fixes applied',
+          quickWins: quickWinFixed > 0 ? `Completed ${quickWinFixed} quick wins for immediate improvements` : 'No quick wins implemented'
+        }
+      });
+      
+    } catch (error: any) {
+      console.error('Error applying batch SEO fixes:', error);
+      res.status(500).json({ 
+        error: 'Failed to apply SEO fixes',
+        details: error.message 
+      });
     }
   });
 
