@@ -254,27 +254,20 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Tabbed Interface */}
-        <Tabs defaultValue="seo-health" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="seo-health">SEO Health Report</TabsTrigger>
-            <TabsTrigger value="agentic-seo">Try Agentic SEO</TabsTrigger>
-          </TabsList>
+        {/* Consolidated Dashboard Content */}
+        <div className="space-y-8">
+          {/* SEO Audit Results */}
+          <div className="max-w-4xl mx-auto">
+            <ResultsSection 
+              auditId={latestAudit.audit.id}
+            />
+          </div>
           
-          <TabsContent value="seo-health" className="mt-6">
-            <div className="max-w-4xl mx-auto">
-              <ResultsSection 
-                auditId={latestAudit.audit.id}
-              />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="agentic-seo" className="mt-6">
-            <div className="max-w-6xl mx-auto">
-              <AIAssistant auditId={latestAudit.audit.id} />
-            </div>
-          </TabsContent>
-        </Tabs>
+          {/* AI Assistant */}
+          <div className="max-w-6xl mx-auto">
+            <AIAssistant auditId={latestAudit.audit.id} />
+          </div>
+        </div>
       </main>
     </div>
   );
