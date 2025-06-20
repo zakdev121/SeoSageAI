@@ -50,7 +50,7 @@ export class PageSpeedService {
             category: 'PERFORMANCE',
             strategy: 'DESKTOP'
           },
-          timeout: 30000 // 30 second timeout
+          timeout: 60000 // 60 second timeout for PageSpeed API
         }
       );
 
