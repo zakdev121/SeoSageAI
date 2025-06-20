@@ -203,6 +203,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate HTML repair plan
+  app.post("/api/audits/:id/repair-plan", async (req, res) => {
+    try {
+      const { pageUrl } = req.body;
+      
+      if (!pageUrl) {
+        return res.status(400).json({ error: 'Page URL is required' });
+      }
+
+      const { htmlRepairService } = await import('./services/html-repair.js');
+      const repairPlan = await htmlRepairService.analyzeRepairNeeds(pageUrl);
+      
+      res.json({
+        success: true,
+        repairPlan
+      });
+    } catch (error: any) {
+      console.error('Error generating repair plan:', error);
+      res.status(500).json({ error: 'Failed to generate repair plan' });
+    }
+  });
+
+  // Generate HTML repair script
+  app.post("/api/audits/:id/repair-script", async (req, res) => {
+    try {
+      const { pageUrl } = req.body;
+      
+      if (!pageUrl) {
+        return res.status(400).json({ error: 'Page URL is required' });
+      }
+
+      const { htmlRepairService } = await import('./services/html-repair.js');
+      const repairScript = await htmlRepairService.generateRepairScript(pageUrl);
+      
+      res.json({
+        success: true,
+        script: repairScript,
+        instructions: `1. Copy the generated PHP code
+2. Add it to your WordPress theme's functions.php file
+3. Or create a new plugin file with this code
+4. Test the page after applying the fix
+5. Run integrity check again to verify repairs`
+      });
+    } catch (error: any) {
+      console.error('Error generating repair script:', error);
+      res.status(500).json({ error: 'Failed to generate repair script' });
+    }
+  });
+
   // Revert applied fix
   app.post("/api/audits/:id/revert-fix", async (req, res) => {
     try {
