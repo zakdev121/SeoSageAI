@@ -235,53 +235,146 @@ Return as JSON: {
    */
   private async generateTemplatedContent(topic: BlogTopic, template: BlogTemplate): Promise<string> {
     const contentPrompt = `
-Write a comprehensive, engaging blog post using the "${template.name}" template structure.
+You are an expert content writer creating a comprehensive, SEO-optimized blog post. This must be a complete, professional article of EXACTLY ${template.targetWordCount} words.
 
-Topic: ${topic.title}
-Target Keyword: ${topic.targetKeyword}
-SEO Keywords: ${topic.seoKeywords?.join(', ')}
-Content Angle: ${topic.contentAngle}
-Target Audience: ${topic.targetAudience}
-Target Word Count: ${template.targetWordCount}
+ARTICLE DETAILS:
+- Topic: ${topic.title}
+- Primary Keyword: ${topic.targetKeyword}
+- SEO Keywords: ${topic.seoKeywords?.join(', ') || ''}
+- Content Angle: ${topic.contentAngle || 'Comprehensive guide'}
+- Target Audience: ${topic.targetAudience || 'Business professionals'}
+- Template: ${template.name}
 
-Template Structure to Follow:
-${template.structure.map(section => `- ${section.replace('_', ' ')}`).join('\n')}
+MANDATORY STRUCTURE (follow this exact flow):
+${template.structure.map((section, index) => `${index + 1}. ${section.replace(/_/g, ' ').toUpperCase()}`).join('\n')}
 
-Content Requirements:
-✅ EXACTLY ${template.targetWordCount} words (critical requirement)
-✅ SEO-optimized with natural keyword integration
-✅ Engaging, professional tone
-✅ Actionable insights and practical advice
-✅ Current industry trends and data
-✅ Real-world examples and case studies
-✅ Clear headings structure (H1, H2, H3)
-✅ Bullet points and numbered lists for readability
-✅ Call-to-action sections
-✅ Internal linking opportunities
+CRITICAL REQUIREMENTS:
+🎯 WORD COUNT: Must be EXACTLY ${template.targetWordCount} words of readable content
+📝 DEPTH: Each section must be 300-500 words with detailed explanations
+🔗 SEO: Natural integration of keywords throughout all sections
+📊 DATA: Include statistics, research findings, and current industry data
+💡 EXAMPLES: Provide real-world case studies and practical examples
+🎨 FORMATTING: Professional HTML with proper heading hierarchy
 
-Format the response as clean HTML with:
-- Proper heading hierarchy (h1, h2, h3)
-- Bullet points and numbered lists
-- Bold and italic text for emphasis
-- Paragraph breaks for readability
-- Blockquotes for important insights
-- Code blocks where relevant
+CONTENT DEPTH REQUIREMENTS:
+- Introduction: 200-300 words setting context and value proposition
+- Each main section: 400-600 words with deep analysis
+- Examples/case studies: Specific, detailed scenarios with outcomes
+- Actionable advice: Step-by-step instructions and best practices
+- Current trends: Recent developments and industry insights
+- Conclusion: 200-300 words summarizing key takeaways
 
-Write the complete blog post now:
+HTML STRUCTURE:
+<h1>${topic.title}</h1>
+<p>Compelling introduction paragraph...</p>
+
+<h2>Section Title</h2>
+<p>Detailed content with <strong>emphasis</strong> and <em>italics</em>...</p>
+<ul>
+<li>Bullet point with detail</li>
+<li>Another comprehensive point</li>
+</ul>
+
+<h3>Subsection</h3>
+<p>More detailed content...</p>
+
+<blockquote>
+"Important insight or quote"
+</blockquote>
+
+Continue this pattern for ALL ${template.structure.length} sections.
+
+WRITE THE COMPLETE ${template.targetWordCount}-WORD BLOG POST NOW:
 `;
 
     try {
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "user", content: contentPrompt }],
-        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional content writer who ALWAYS writes exactly ${template.targetWordCount} words. Count carefully and ensure comprehensive coverage of all topics.`
+          },
+          {
+            role: "user", 
+            content: contentPrompt
+          }
+        ],
+        temperature: 0.3, // Lower temperature for more focused, detailed content
         max_tokens: 16000
       });
 
-      return response.choices[0].message.content || '';
+      let content = response.choices[0].message.content || '';
+      
+      // Validate and enforce word count
+      const wordCount = this.calculateWordCount(content);
+      console.log(`Generated blog post: ${wordCount} words (target: ${template.targetWordCount})`);
+      
+      // If content is too short, generate additional sections
+      if (wordCount < template.targetWordCount * 0.8) {
+        console.log(`Content too short (${wordCount} words), expanding...`);
+        content = await this.expandContent(content, topic, template, template.targetWordCount - wordCount);
+      }
+      
+      return content;
     } catch (error) {
       console.error('Error generating templated content:', error);
       return '';
+    }
+  }
+
+  /**
+   * Expand content to meet word count requirements
+   */
+  private async expandContent(currentContent: string, topic: BlogTopic, template: BlogTemplate, additionalWords: number): Promise<string> {
+    const expansionPrompt = `
+You are expanding an existing blog post to meet the required ${template.targetWordCount} word count. The current content is ${this.calculateWordCount(currentContent)} words and needs ${additionalWords} more words.
+
+CURRENT CONTENT:
+${currentContent}
+
+EXPANSION REQUIREMENTS:
+- Add exactly ${additionalWords} more words of high-quality content
+- Maintain the existing structure and flow
+- Add new sections like:
+  * "Advanced Strategies"
+  * "Common Mistakes to Avoid" 
+  * "Real-World Case Studies"
+  * "Future Trends and Predictions"
+  * "Implementation Checklist"
+  * "Frequently Asked Questions"
+- Include more detailed examples and explanations
+- Add statistical data and research findings
+- Provide actionable tips and best practices
+
+Return the COMPLETE expanded blog post with the original content plus new sections:
+`;
+
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are expanding blog content to reach exactly the target word count while maintaining quality and relevance."
+          },
+          {
+            role: "user",
+            content: expansionPrompt
+          }
+        ],
+        temperature: 0.4,
+        max_tokens: 16000
+      });
+
+      const expandedContent = response.choices[0].message.content || currentContent;
+      const finalWordCount = this.calculateWordCount(expandedContent);
+      console.log(`Content expanded from ${this.calculateWordCount(currentContent)} to ${finalWordCount} words`);
+      
+      return expandedContent;
+    } catch (error) {
+      console.error('Error expanding content:', error);
+      return currentContent;
     }
   }
 

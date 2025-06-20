@@ -237,7 +237,7 @@ export class ImageService {
    * Get topic-appropriate colors
    */
   private getTopicColors(topic: string): { primary: string; secondary: string; background: string; text: string } {
-    const topicLower = topic.toLowerCase();
+    const topicLower = (topic || '').toLowerCase();
     
     if (topicLower.includes('tech') || topicLower.includes('ai') || topicLower.includes('software')) {
       return { primary: '#3B82F6', secondary: '#1E40AF', background: '#F1F5F9', text: '#1E293B' };
