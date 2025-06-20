@@ -373,6 +373,114 @@ export class SEOEngine {
     // Simple extraction - in real implementation, would query WordPress API
     return Math.floor(Math.random() * 1000) + 1;
   }
+
+  /**
+   * Generate SEO optimizations for a specific page
+   */
+  async generatePageOptimizations(pageData: {
+    url: string;
+    title: string;
+    metaDescription: string;
+    content: string;
+    wordCount: number;
+    industry: string;
+    issues: string[];
+  }): Promise<{ fixes: Array<{ type: string; currentValue: string; optimizedValue: string; reasoning: string }> }> {
+    const fixes = [];
+
+    // Generate optimized meta description
+    if (pageData.issues.includes('meta_description')) {
+      const metaPrompt = `Generate an SEO-optimized meta description for this page:
+      URL: ${pageData.url}
+      Title: ${pageData.title}
+      Industry: ${pageData.industry}
+      Current: ${pageData.metaDescription || 'None'}
+      
+      Requirements:
+      - Exactly 150-160 characters
+      - Include primary keyword naturally
+      - Compelling call-to-action
+      - Match page content and industry
+      
+      Return only the meta description text, no quotes or formatting.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: metaPrompt }]
+      });
+
+      const optimizedMeta = response.choices[0].message.content?.trim() || '';
+      
+      fixes.push({
+        type: 'meta_description',
+        currentValue: pageData.metaDescription || 'Missing',
+        optimizedValue: optimizedMeta,
+        reasoning: `Generated SEO-compliant meta description (${optimizedMeta.length} chars) with industry keywords and call-to-action`
+      });
+    }
+
+    // Generate optimized title
+    if (pageData.issues.includes('title')) {
+      const titlePrompt = `Generate an SEO-optimized title tag for this page:
+      URL: ${pageData.url}
+      Current Title: ${pageData.title}
+      Industry: ${pageData.industry}
+      
+      Requirements:
+      - 50-60 characters ideal
+      - Include primary keyword
+      - Clear and compelling
+      - Match search intent
+      
+      Return only the title text, no quotes or formatting.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: titlePrompt }]
+      });
+
+      const optimizedTitle = response.choices[0].message.content?.trim() || '';
+      
+      fixes.push({
+        type: 'title',
+        currentValue: pageData.title || 'Missing',
+        optimizedValue: optimizedTitle,
+        reasoning: `Generated SEO-optimized title (${optimizedTitle.length} chars) with primary keywords and clear value proposition`
+      });
+    }
+
+    // Generate content expansion for thin content
+    if (pageData.issues.includes('thin_content')) {
+      const contentPrompt = `Generate additional content to expand this page:
+      URL: ${pageData.url}
+      Current Word Count: ${pageData.wordCount}
+      Industry: ${pageData.industry}
+      
+      Generate 200-300 words that would:
+      - Add valuable information
+      - Include relevant keywords naturally
+      - Maintain professional tone
+      - Complement existing content
+      
+      Return HTML-formatted content ready for insertion.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: contentPrompt }]
+      });
+
+      const additionalContent = response.choices[0].message.content?.trim() || '';
+      
+      fixes.push({
+        type: 'thin_content',
+        currentValue: `${pageData.wordCount} words`,
+        optimizedValue: additionalContent,
+        reasoning: `Generated ${additionalContent.split(' ').length} additional words to expand thin content and improve SEO value`
+      });
+    }
+
+    return { fixes };
+  }
 }
 
 export const seoEngine = new SEOEngine('synviz');

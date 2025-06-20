@@ -842,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply fixes via WordPress API if available
       let appliedFixes = [];
       try {
-        const { WordPressService } = await import('./services/wordpress.js');
+        const { WordPressService } = await import('./services/wordpress-api.js');
         const wpService = new WordPressService(audit.url);
         
         for (const fix of fixResults.fixes) {
