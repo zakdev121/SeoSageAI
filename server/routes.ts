@@ -232,8 +232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create audit record
       const audit = await storage.createAudit(validatedData);
       
-      // Start background processing with new SEO engine
-      processAuditWithEngine(audit.id, validatedData.url, validatedData.industry, validatedData.email);
+      // Start background processing with full audit capabilities
+      processAudit(audit.id, validatedData.url, validatedData.industry, validatedData.email);
       
       res.json({ auditId: audit.id, status: 'started' });
     } catch (error) {
