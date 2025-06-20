@@ -131,16 +131,6 @@ export default function Dashboard() {
                 <Plus className="w-4 h-4" />
                 <span>New Audit</span>
               </Button>
-              <Link href="/">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-1"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Home</span>
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
