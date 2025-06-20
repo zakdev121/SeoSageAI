@@ -5,7 +5,8 @@ import { ResultsSection } from "@/components/results-section";
 import { ToastNotifications } from "@/components/toast-notifications";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut } from "lucide-react";
+import { LogOut, BarChart3 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Home() {
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
@@ -32,6 +33,16 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-sm text-slate-600">{user?.name} ({tenant?.name})</span>
+              <Link href="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-1"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
