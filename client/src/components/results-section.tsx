@@ -200,41 +200,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
         </Card>
       )}
 
-      {/* Tabbed Content */}
-      <Card>
-        <Tabs defaultValue="overview" className="w-full">
-          <div className="border-b border-slate-200">
-            <div className="px-6">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="overview" className="flex items-center space-x-2">
-                  <i className="fas fa-chart-line"></i>
-                  <span>Overview</span>
-                </TabsTrigger>
-                <TabsTrigger value="performance" className="flex items-center space-x-2">
-                  <i className="fas fa-tachometer-alt"></i>
-                  <span>Performance</span>
-                </TabsTrigger>
-                <TabsTrigger value="technical" className="flex items-center space-x-2">
-                  <i className="fas fa-cog"></i>
-                  <span>Technical SEO</span>
-                </TabsTrigger>
-                <TabsTrigger value="keywords" className="flex items-center space-x-2">
-                  <i className="fas fa-key"></i>
-                  <span>Keywords</span>
-                </TabsTrigger>
-                <TabsTrigger value="content" className="flex items-center space-x-2">
-                  <i className="fas fa-file-alt"></i>
-                  <span>Content</span>
-                </TabsTrigger>
-                <TabsTrigger value="ai-solutions" className="flex items-center space-x-2">
-                  <Brain className="h-4 w-4" />
-                  <span>AI Solutions</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </div>
 
-          <CardContent className="p-6">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Issues */}
