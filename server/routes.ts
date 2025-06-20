@@ -903,9 +903,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
+      // Map frontend fix types to SEO engine expected types
+      const fixTypeMapping = {
+        'meta_description': 'missing_meta_description',
+        'title_tag': 'missing_title_tag',
+        'title_optimization': 'long_title_tag',
+        'alt_text': 'missing_alt_text',
+        'content_expansion': 'thin_content',
+        'schema': 'missing_schema_markup',
+        'internal_links': 'poor_internal_linking'
+      };
+
+      const mappedFixType = fixTypeMapping[fix.type] || fix.type;
+      
       // Use clean SEO engine for safe fix application (Pillar 3)
       const { seoEngine } = await import('./core/seo-engine-simple.js');
-      const result = await seoEngine.applySafeFix(auditId, fix.type, fix.pageUrl || 'https://synviz.com/hire-now/');
+      const result = await seoEngine.applySafeFix(auditId, mappedFixType, fix.pageUrl || 'https://synviz.com/hire-now/');
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {

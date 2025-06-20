@@ -25,7 +25,9 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
     refetchInterval: (data) => {
       return data?.status === 'completed' ? false : 2000;
     },
-    enabled: !!auditId
+    enabled: !!auditId,
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache audit data
   });
 
   const { data: fixedIssuesData } = useFixedIssues(auditId);

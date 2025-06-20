@@ -88,7 +88,7 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard"],
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     staleTime: 0, // Always consider data stale to force fresh fetches
-    cacheTime: 0, // Don't cache to ensure we get latest audit data
+    gcTime: 0, // Don't cache to ensure we get latest audit data
   });
 
   const handleAuditStart = (auditId: number) => {
