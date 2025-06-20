@@ -204,32 +204,89 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     }
   });
 
-  // Custom AI blog generator mutation
+  // Custom AI blog generator mutation with streaming
   const customBlogMutation = useMutation({
     mutationFn: async ({ topic, industry }: { topic: string; industry: string }) => {
       setIsWritingBlog(true);
       setBlogContent('');
       scrollToBlogSection();
       
-      const response = await apiRequest("POST", `/api/audits/${auditId}/write-custom-blog`, { 
-        topic, 
-        industry 
-      });
-      const result = await response.json();
-      
-      // Simulate real-time writing
-      return new Promise((resolve) => {
-        const fullContent = result.blogPost?.content || '';
-        simulateTyping(fullContent, (partial) => {
-          setBlogContent(partial);
-        });
-        
-        // Complete after typing simulation
-        setTimeout(() => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const response = await fetch(`/api/audits/${auditId}/write-custom-blog`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ topic, industry, stream: true })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to start streaming');
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error('No response body reader available');
+          }
+
+          let fullContent = '';
+          let blogPostData = null;
+          const decoder = new TextDecoder();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  
+                  if (data.type === 'content') {
+                    fullContent += data.content;
+                    setBlogContent(fullContent);
+                  } else if (data.type === 'complete') {
+                    setIsWritingBlog(false);
+                    blogPostData = {
+                      title: topic,
+                      content: fullContent,
+                      metaDescription: `Comprehensive guide about ${topic} in the ${industry} industry.`
+                    };
+                    setGeneratedBlogPost(blogPostData);
+                    resolve({ blogPost: blogPostData });
+                    return;
+                  } else if (data.type === 'error') {
+                    setIsWritingBlog(false);
+                    reject(new Error(data.error));
+                    return;
+                  }
+                } catch (parseError) {
+                  console.log('Non-JSON line:', line);
+                }
+              }
+            }
+          }
+          
+          // If we reach here without completion, finish the blog post
+          if (fullContent && !blogPostData) {
+            setIsWritingBlog(false);
+            blogPostData = {
+              title: topic,
+              content: fullContent,
+              metaDescription: `Comprehensive guide about ${topic} in the ${industry} industry.`
+            };
+            setGeneratedBlogPost(blogPostData);
+            resolve({ blogPost: blogPostData });
+          }
+        } catch (error) {
           setIsWritingBlog(false);
-          setGeneratedBlogPost(result.blogPost);
-          resolve(result);
-        }, Math.min(fullContent.length * 50, 10000)); // Max 10 seconds
+          reject(error);
+        }
       });
     },
     onSuccess: () => {

@@ -593,11 +593,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Write a custom blog post with SEO optimization
+  // Write a custom blog post with SEO optimization and streaming
   app.post("/api/audits/:id/write-custom-blog", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { topic, industry } = req.body;
+      const { topic, industry, stream } = req.body;
       
       if (!topic || !industry) {
         return res.status(400).json({ error: 'Topic and industry are required' });
@@ -645,12 +645,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         keywordLandscape: null
       };
       
-      const blogPost = await blogWriter.writeBlogPost(customTopic, auditResults);
-      
-      res.json({ blogPost });
+      if (stream) {
+        // Set up Server-Sent Events for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        await blogWriter.writeBlogPostStreaming(customTopic, auditResults, (chunk: string) => {
+          res.write(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`);
+        });
+        
+        res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
+        res.end();
+      } else {
+        const blogPost = await blogWriter.writeBlogPost(customTopic, auditResults);
+        res.json({ blogPost });
+      }
     } catch (error: any) {
       console.error('Error writing custom blog post:', error);
-      res.status(500).json({ error: 'Failed to write custom blog post' });
+      if (req.body.stream) {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: 'Failed to write custom blog post' })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: 'Failed to write custom blog post' });
+      }
     }
   });
 
