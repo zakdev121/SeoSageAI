@@ -1,14 +1,49 @@
-import { audits, type Audit, type InsertAudit, type AuditResultsType } from "@shared/schema";
+import { 
+  audits, 
+  seoIssues, 
+  blogPosts, 
+  dashboardMetrics,
+  type Audit, 
+  type InsertAudit, 
+  type AuditResultsType,
+  type SEOIssue,
+  type InsertSEOIssue,
+  type SEOIssueType,
+  type BlogPost,
+  type InsertBlogPost,
+  type DashboardMetrics,
+  type InsertDashboardMetrics
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Audit operations
   createAudit(audit: InsertAudit): Promise<Audit>;
   getAudit(id: number): Promise<Audit | undefined>;
+  getUserAudits(userId: number): Promise<Audit[]>;
   updateAuditProgress(id: number, progress: number): Promise<void>;
   completeAudit(id: number, results: AuditResultsType): Promise<void>;
   failAudit(id: number, error: string): Promise<void>;
-  markIssueAsFixed(auditId: number, issueType: string, issueUrl: string): Promise<void>;
-  getFixedIssues(auditId: number): Promise<Array<{issueType: string, issueUrl: string, fixedAt: Date}>>;
-  revertFixedIssue(auditId: number, issueType: string, issueUrl: string): Promise<void>;
+  refreshAudit(id: number): Promise<void>;
+  
+  // SEO Issues operations
+  saveSeoIssues(auditId: number, issues: SEOIssueType[]): Promise<void>;
+  getSeoIssues(auditId: number): Promise<SEOIssue[]>;
+  markIssueAsFixed(issueId: number): Promise<void>;
+  markIssueAsIgnored(issueId: number): Promise<void>;
+  getActiveIssues(auditId: number): Promise<SEOIssue[]>;
+  
+  // Blog Posts operations
+  saveBlogPost(blogPost: InsertBlogPost): Promise<BlogPost>;
+  getBlogPosts(auditId: number): Promise<BlogPost[]>;
+  publishBlogPost(blogId: number): Promise<void>;
+  updateBlogPost(blogId: number, content: string, wordCount: number): Promise<void>;
+  
+  // Dashboard Metrics operations
+  updateDashboardMetrics(auditId: number, metrics: Partial<InsertDashboardMetrics>): Promise<void>;
+  getDashboardMetrics(auditId: number): Promise<DashboardMetrics | undefined>;
+  calculateMetrics(auditId: number): Promise<DashboardMetrics>;
 }
 
 export class MemStorage implements IStorage {
@@ -104,4 +139,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export { storage } from "./database-storage";

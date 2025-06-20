@@ -53,7 +53,47 @@ export const audits = pgTable("audits", {
   progress: integer("progress").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
   results: jsonb("results"), // Store the complete audit results
+  autoRefresh: boolean("auto_refresh").default(true)
+});
+
+export const seoIssues = pgTable("seo_issues", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").notNull().references(() => audits.id),
+  issueType: varchar("issue_type", { length: 100 }).notNull(),
+  pageUrl: varchar("page_url", { length: 500 }).notNull(),
+  description: text("description"),
+  severity: varchar("severity", { length: 20 }).notNull(), // high, medium, low
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, fixed, ignored
+  fixedAt: timestamp("fixed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").notNull().references(() => audits.id),
+  title: varchar("title", { length: 500 }).notNull(),
+  content: text("content"),
+  keywords: jsonb("keywords").$type<string[]>().default([]),
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, published, scheduled
+  wordCount: integer("word_count").default(0),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const dashboardMetrics = pgTable("dashboard_metrics", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").notNull().references(() => audits.id),
+  seoScore: integer("seo_score"),
+  totalIssues: integer("total_issues"),
+  fixedIssues: integer("fixed_issues"),
+  activeIssues: integer("active_issues"),
+  publishedBlogs: integer("published_blogs"),
+  draftBlogs: integer("draft_blogs"),
+  lastCalculated: timestamp("last_calculated").defaultNow()
 });
 
 export const insertAuditSchema = createInsertSchema(audits).pick({
@@ -64,6 +104,12 @@ export const insertAuditSchema = createInsertSchema(audits).pick({
 
 export type InsertAudit = z.infer<typeof insertAuditSchema>;
 export type Audit = typeof audits.$inferSelect;
+export type SEOIssue = typeof seoIssues.$inferSelect;
+export type InsertSEOIssue = typeof seoIssues.$inferInsert;
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = typeof blogPosts.$inferInsert;
+export type DashboardMetrics = typeof dashboardMetrics.$inferSelect;
+export type InsertDashboardMetrics = typeof dashboardMetrics.$inferInsert;
 
 // User and tenant types
 export const insertUserSchema = createInsertSchema(users).pick({
