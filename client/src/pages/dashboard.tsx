@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, FileText, Globe, ArrowLeft, Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, FileText, Globe, ArrowLeft, Plus, Play } from "lucide-react";
 import { Link } from "wouter";
 import { ResultsSection } from "@/components/results-section";
 import { AuditForm } from "@/components/audit-form";
@@ -119,17 +120,30 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">SEO Dashboard</h1>
-                <p className="text-xs text-slate-500">Real-time audit insights for {latestAudit.audit.url}</p>
+                <div className="flex items-center space-x-4 text-xs text-slate-500">
+                  <span className="font-medium">{latestAudit.audit.url}</span>
+                  <span>•</span>
+                  <span>{latestAudit.audit.industry}</span>
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <div className="text-right text-xs text-slate-500">
+                <div>Last Audit Run:</div>
+                <div className="font-medium">
+                  {latestAudit.audit.completedAt 
+                    ? new Date(latestAudit.audit.completedAt).toLocaleString()
+                    : 'In Progress'
+                  }
+                </div>
+              </div>
               <Button
                 onClick={handleNewAuditClick}
                 size="sm"
                 className="flex items-center space-x-1"
               >
-                <Plus className="w-4 h-4" />
-                <span>New Audit</span>
+                <Play className="w-4 h-4" />
+                <span>Run Audit</span>
               </Button>
             </div>
           </div>
@@ -215,12 +229,39 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Full Results Section - Same as main page */}
-        <div className="max-w-4xl mx-auto">
-          <ResultsSection 
-            auditId={latestAudit.audit.id}
-          />
-        </div>
+        {/* Tabbed Interface */}
+        <Tabs defaultValue="seo-health" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="seo-health">SEO Health Report</TabsTrigger>
+            <TabsTrigger value="agentic-seo">Try Agentic SEO</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="seo-health" className="mt-6">
+            <div className="max-w-4xl mx-auto">
+              <ResultsSection 
+                auditId={latestAudit.audit.id}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="agentic-seo" className="mt-6">
+            <div className="max-w-4xl mx-auto">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agentic SEO Assistant</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    AI-powered SEO automation and content generation
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center text-muted-foreground py-8">
+                    Agentic SEO features coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
