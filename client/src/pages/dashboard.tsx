@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, CheckCircle, Clock, TrendingUp, FileText, Globe, ArrowLeft, Plus, Play } from "lucide-react";
 import { Link } from "wouter";
 import { ResultsSection } from "@/components/results-section";
+import { AIAssistant } from "@/components/ai-assistant";
 import { AuditForm } from "@/components/audit-form";
 
 interface DashboardData {
@@ -179,7 +180,7 @@ export default function Dashboard() {
           <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-green-600 mb-1">
-                {metrics?.seoScore || 19}
+                {metrics?.seoScore || 19}/100
               </div>
               <div className="text-sm text-gray-600">SEO Score</div>
             </CardContent>
@@ -203,20 +204,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">SEO Score</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {metrics?.seoScore || 0}/100
-              </div>
-              <Progress value={metrics?.seoScore || 0} className="mt-2" />
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
@@ -282,20 +270,8 @@ export default function Dashboard() {
           </TabsContent>
           
           <TabsContent value="agentic-seo" className="mt-6">
-            <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Agentic SEO Assistant</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    AI-powered SEO automation and content generation
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-center text-muted-foreground py-8">
-                    Agentic SEO features coming soon...
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="max-w-6xl mx-auto">
+              <AIAssistant auditId={latestAudit.audit.id} />
             </div>
           </TabsContent>
         </Tabs>
