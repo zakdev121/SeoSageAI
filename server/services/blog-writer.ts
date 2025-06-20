@@ -230,6 +230,63 @@ Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
     }
   }
 
+  async writeBlogPostStreaming(topic: BlogTopic, auditResults: AuditResultsType, onChunk: (chunk: string) => void): Promise<void> {
+    console.log('Generating blog post with streaming...');
+    
+    const prompt = `Write a comprehensive, SEO-optimized blog post about: ${topic.title}
+
+Target Keyword: ${topic.targetKeyword}
+Industry: ${auditResults.industry}
+Meta Description: ${topic.metaDescription}
+
+SEO Keywords to include naturally: ${topic.seoKeywords?.join(', ')}
+
+Requirements:
+- Write 2,000-3,000 words minimum
+- Include proper HTML formatting with headings (h1, h2, h3)
+- Write for ${topic.targetAudience || 'business professionals'}
+- Use ${topic.contentAngle || 'comprehensive guide'} approach
+- Include actionable insights and practical examples
+- Optimize for search engines while maintaining readability
+- Structure with clear sections and subheadings
+
+Write the complete blog post content with proper HTML formatting. Make it authoritative, engaging, and valuable.`;
+
+    try {
+      const stream = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert SEO content writer. Write complete, full-length blog posts with proper HTML formatting. Focus on providing genuine value and actionable insights."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        stream: true,
+        temperature: 0.3,
+        max_tokens: 16000
+      });
+
+      let fullContent = '';
+      
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullContent += content;
+          onChunk(content);
+        }
+      }
+      
+      console.log('Streaming blog post completed');
+    } catch (error) {
+      console.error('Error in streaming blog generation:', error);
+      throw error;
+    }
+  }
+
   /**
    * Direct blog post generation (fallback method)
    */

@@ -547,11 +547,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Write a specific blog post
+  // Write a specific blog post with streaming
   app.post("/api/audits/:id/write-blog", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { topic } = req.body;
+      const { topic, stream } = req.body;
       
       if (!topic) {
         return res.status(400).json({ error: 'Blog topic is required' });
@@ -564,12 +564,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const blogWriter = new BlogWriterService();
-      const blogPost = await blogWriter.writeBlogPost(topic, audit.results);
       
-      res.json({ blogPost });
+      if (stream) {
+        // Set up Server-Sent Events for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        await blogWriter.writeBlogPostStreaming(topic, audit.results, (chunk: string) => {
+          res.write(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`);
+        });
+        
+        res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
+        res.end();
+      } else {
+        const blogPost = await blogWriter.writeBlogPost(topic, audit.results);
+        res.json({ blogPost });
+      }
     } catch (error: any) {
       console.error('Error writing blog post:', error);
-      res.status(500).json({ error: 'Failed to write blog post' });
+      if (req.body.stream) {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: 'Failed to write blog post' })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: 'Failed to write blog post' });
+      }
     }
   });
 
