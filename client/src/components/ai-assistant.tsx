@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap, Edit, Copy, RefreshCw, Plus, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap, Edit, Copy, RefreshCw, Plus, Loader2, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -811,11 +811,41 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                     </div>
                     <div>
                       <h4 className="font-semibold text-sm text-gray-700">Word Count</h4>
-                      <p className="text-sm">{generatedBlogPost.content?.length || 0} characters</p>
+                      <p className="text-sm">{Math.round((generatedBlogPost.content?.length || 0) / 5)} words</p>
                     </div>
                     <div>
                       <h4 className="font-semibold text-sm text-gray-700">Meta Description</h4>
                       <p className="text-sm">{generatedBlogPost.metaDescription}</p>
+                    </div>
+                  </div>
+
+                  {/* SEO Quality Checkpoints */}
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-semibold text-sm text-gray-800 mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      SEO Quality Score
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <SEOCheckpoint
+                        title="Content Length"
+                        status={getSEOContentLengthStatus(generatedBlogPost.content)}
+                        description="Optimal word count for SEO"
+                      />
+                      <SEOCheckpoint
+                        title="Title Optimization"
+                        status={getSEOTitleStatus(generatedBlogPost.title)}
+                        description="SEO-friendly title structure"
+                      />
+                      <SEOCheckpoint
+                        title="Meta Description"
+                        status={getSEOMetaStatus(generatedBlogPost.metaDescription)}
+                        description="Compelling meta description"
+                      />
+                      <SEOCheckpoint
+                        title="Content Structure"
+                        status={getSEOStructureStatus(generatedBlogPost.content)}
+                        description="Proper heading hierarchy"
+                      />
                     </div>
                   </div>
                   
@@ -1051,4 +1081,87 @@ function getDifficultyColor(difficulty: string) {
     case 'hard': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
+}
+
+// SEO Checkpoint Component
+function SEOCheckpoint({ title, status, description }: { title: string; status: 'excellent' | 'good' | 'needs-improvement'; description: string }) {
+  const getStatusIcon = () => {
+    switch (status) {
+      case 'excellent':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'good':
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case 'needs-improvement':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'excellent':
+        return 'text-green-800 bg-green-100';
+      case 'good':
+        return 'text-yellow-800 bg-yellow-100';
+      case 'needs-improvement':
+        return 'text-red-800 bg-red-100';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (status) {
+      case 'excellent':
+        return 'Excellent';
+      case 'good':
+        return 'Good';
+      case 'needs-improvement':
+        return 'Needs Work';
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-2 p-3 border rounded-lg bg-white">
+      {getStatusIcon()}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h5 className="font-medium text-sm text-gray-900">{title}</h5>
+          <Badge className={`text-xs ${getStatusColor()}`}>
+            {getStatusText()}
+          </Badge>
+        </div>
+        <p className="text-xs text-gray-600">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+// SEO Status Evaluation Functions
+function getSEOContentLengthStatus(content: string): 'excellent' | 'good' | 'needs-improvement' {
+  const wordCount = Math.round((content?.length || 0) / 5);
+  if (wordCount >= 1500) return 'excellent';
+  if (wordCount >= 800) return 'good';
+  return 'needs-improvement';
+}
+
+function getSEOTitleStatus(title: string): 'excellent' | 'good' | 'needs-improvement' {
+  const length = title?.length || 0;
+  if (length >= 40 && length <= 60) return 'excellent';
+  if (length >= 30 && length <= 70) return 'good';
+  return 'needs-improvement';
+}
+
+function getSEOMetaStatus(metaDescription: string): 'excellent' | 'good' | 'needs-improvement' {
+  const length = metaDescription?.length || 0;
+  if (length >= 140 && length <= 160) return 'excellent';
+  if (length >= 120 && length <= 180) return 'good';
+  return 'needs-improvement';
+}
+
+function getSEOStructureStatus(content: string): 'excellent' | 'good' | 'needs-improvement' {
+  const hasH1 = content?.includes('<h1') || false;
+  const hasH2 = content?.includes('<h2') || false;
+  const hasH3 = content?.includes('<h3') || false;
+  
+  if (hasH1 && hasH2 && hasH3) return 'excellent';
+  if (hasH1 && hasH2) return 'good';
+  return 'needs-improvement';
 }
