@@ -70,6 +70,54 @@ export class WordPressService {
     }
   }
 
+  async getPostIdFromUrl(pageUrl: string): Promise<number | null> {
+    try {
+      // Try to extract post ID from URL patterns
+      const urlPatterns = [
+        /\/\?p=(\d+)/,           // ?p=123
+        /\/(\d+)\/?$/,           // /123/
+        /\/([^\/]+)\/?$/         // /post-slug/
+      ];
+
+      // First try direct ID extraction
+      for (const pattern of urlPatterns.slice(0, 2)) {
+        const match = pageUrl.match(pattern);
+        if (match) {
+          return parseInt(match[1]);
+        }
+      }
+
+      // If no direct ID, try to find by slug
+      const slugMatch = pageUrl.match(/\/([^\/]+)\/?$/);
+      if (slugMatch) {
+        const slug = slugMatch[1];
+        
+        // Search in posts
+        const postsResponse = await axios.get(`${this.baseUrl}/posts?slug=${slug}`, {
+          headers: this.getAuthHeaders()
+        });
+        
+        if (postsResponse.data && postsResponse.data.length > 0) {
+          return postsResponse.data[0].id;
+        }
+
+        // Search in pages
+        const pagesResponse = await axios.get(`${this.baseUrl}/pages?slug=${slug}`, {
+          headers: this.getAuthHeaders()
+        });
+        
+        if (pagesResponse.data && pagesResponse.data.length > 0) {
+          return pagesResponse.data[0].id;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error getting post ID from URL:', error);
+      return null;
+    }
+  }
+
   async getAllPosts(): Promise<WordPressPost[]> {
     try {
       const allPosts: WordPressPost[] = [];

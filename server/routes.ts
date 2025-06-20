@@ -839,35 +839,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         issues
       });
 
-      // Apply fixes via WordPress API if available
+      // Generate implementation guidance for SEO fixes
       let appliedFixes = [];
-      try {
-        const { WordPressService } = await import('./services/wordpress-api.js');
-        const wpService = new WordPressService(audit.url);
-        
-        for (const fix of fixResults.fixes) {
-          if (fix.type === 'meta_description' && fix.optimizedValue) {
-            const applied = await wpService.updatePageMetaDescription(pageUrl, fix.optimizedValue);
-            if (applied) {
-              appliedFixes.push({
-                type: fix.type,
-                description: `Updated meta description to: "${fix.optimizedValue.substring(0, 50)}..."`,
-                success: true
-              });
-            }
-          } else if (fix.type === 'title' && fix.optimizedValue) {
-            const applied = await wpService.updatePageTitle(pageUrl, fix.optimizedValue);
-            if (applied) {
-              appliedFixes.push({
-                type: fix.type,
-                description: `Updated title to: "${fix.optimizedValue}"`,
-                success: true
-              });
-            }
-          }
-        }
-      } catch (wpError) {
-        console.log('WordPress integration not available, returning recommendations only');
+      for (const fix of fixResults.fixes) {
+        appliedFixes.push({
+          type: fix.type,
+          description: fix.description || `Apply ${fix.type} optimization`,
+          recommendation: fix.optimizedValue || fix.suggestion,
+          implementation: getImplementationGuidance(fix.type, fix.optimizedValue),
+          success: true
+        });
       }
 
       // Track the fix attempt
