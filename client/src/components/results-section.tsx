@@ -136,7 +136,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
       <Card>
         <Tabs defaultValue="overview" className="w-full">
           <div className="border-b border-slate-200">
-            <div className="px-6">
+            <div className="px-6 py-4">
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview" className="flex items-center space-x-2">
                   <span>Overview</span>
