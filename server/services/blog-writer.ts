@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AuditResultsType } from '@shared/schema';
+import { imageService, type ImageResult } from './image-service';
 
 export class BlogWriterService {
   private openai: OpenAI;
@@ -79,6 +80,50 @@ Provide 8-12 blog topic ideas that target different keyword opportunities and ad
     } catch (error) {
       console.error('Error generating blog strategy:', error);
       return { strategy: {}, blogTopics: [] };
+    }
+  }
+
+  /**
+   * Use GPT to determine the best image keywords for blog content
+   */
+  private async getImageKeywordsFromGPT(topic: BlogTopic): Promise<string[]> {
+    const prompt = `
+Based on this blog topic, suggest 5-7 specific image search keywords that would be most relevant and visually appealing:
+
+Topic: ${topic.title}
+Industry: ${topic.industry || 'general'}
+Keywords: ${topic.keywords?.join(', ') || topic.targetKeyword}
+Type: ${topic.contentType}
+
+Provide image keywords that are:
+- Visually compelling and professional
+- Relevant to the blog content and industry
+- Likely to find high-quality stock photos
+- Diverse (mix of concepts, objects, people, abstract)
+
+Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
+`;
+
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_tokens: 300
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{"keywords": []}');
+      return result.keywords || [];
+    } catch (error) {
+      console.error('Error getting image keywords from GPT:', error);
+      // Fallback to topic-based keywords
+      return [
+        topic.title.split(' ').slice(0, 2).join(' '),
+        topic.industry || 'business',
+        'professional',
+        'technology',
+        'teamwork'
+      ];
     }
   }
 
@@ -210,7 +255,33 @@ Make the content authoritative, engaging, and optimized for search engines while
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{"post": {}}');
-      return result.post;
+      const blogPost = result.post;
+
+      // Auto-inject relevant images using GPT-determined keywords
+      try {
+        const imageKeywords = await this.getImageKeywordsFromGPT(topic);
+        const images = await imageService.getRelevantImages(
+          topic.title, 
+          imageKeywords, 
+          3 // Get 3 images for the blog post
+        );
+        
+        if (images.length > 0 && blogPost.content) {
+          blogPost.content = imageService.injectImagesIntoContent(blogPost.content, images);
+          
+          // Add image metadata to the blog post
+          blogPost.images = images.map(img => ({
+            url: img.url,
+            alt: img.alt,
+            attribution: img.attribution
+          }));
+        }
+      } catch (imageError) {
+        console.error('Error auto-injecting images:', imageError);
+        // Continue without images rather than failing the entire blog generation
+      }
+
+      return blogPost;
     } catch (error) {
       console.error('Error writing blog post:', error);
       return {} as BlogPost;
