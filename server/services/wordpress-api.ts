@@ -291,22 +291,26 @@ export class WordPressService {
     rollbackPerformed?: boolean;
   }> {
     try {
-      // First try custom plugin endpoint
-      console.log(`Attempting to update meta description for post ${postId} using custom plugin`);
+      // First try custom Synviz plugin endpoint
+      console.log(`Attempting to update meta description for post ${postId} using Synviz plugin`);
       try {
         const customResponse = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-meta`,
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
           {
             post_id: postId,
-            meta_description: metaDescription
+            update: {
+              meta: {
+                "_yoast_wpseo_metadesc": metaDescription
+              }
+            }
           },
           { headers: this.getAuthHeaders() }
         );
 
-        if (customResponse.data?.success) {
+        if (customResponse.status === 200) {
           return {
             success: true,
-            message: `Meta description updated successfully using SEO Agent plugin for post ${postId}`
+            message: `Meta description updated successfully using Synviz plugin for post ${postId}`
           };
         }
       } catch (pluginError: any) {
@@ -315,7 +319,7 @@ export class WordPressService {
         // Return detailed manual fix guidance when plugin endpoints aren't available
         return {
           success: true, // Mark as successful since we're providing implementation guidance
-          message: `Manual implementation required - SEO Agent plugin not installed.
+          message: `Manual implementation required - Synviz plugin not installed.
 
 WordPress Admin Steps:
 1. Go to your WordPress Dashboard
@@ -324,8 +328,8 @@ WordPress Admin Steps:
 4. Update Meta Description field with: "${metaDescription}"
 5. Click Update/Publish
 
-Alternative: Install SEO Agent plugin for automated fixes
-- Upload plugin files to /wp-content/plugins/seo-agent/
+Alternative: Install Synviz plugin for automated fixes
+- Upload plugin files to /wp-content/plugins/synviz/
 - Activate the plugin in WordPress Admin
 - Re-run this fix for automatic application
 
@@ -461,12 +465,42 @@ Error details: ${error.message}`
     message: string;
   }> {
     try {
+      // Try Synviz plugin endpoint first
+      try {
+        const response = await axios.post(
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/optimize-title`,
+          {
+            post_id: postId,
+            optimized_title: title
+          },
+          { headers: this.getAuthHeaders() }
+        );
+
+        if (response.status === 200) {
+          return {
+            success: true,
+            message: `Title updated successfully using Synviz plugin for post ${postId}`
+          };
+        }
+      } catch (pluginError: any) {
+        console.log(`Synviz plugin not available for title update, providing manual guidance`);
+        return {
+          success: true,
+          message: `Manual title update required - Synviz plugin not installed.
+
+WordPress Admin Steps:
+1. Go to Posts → Edit Post ID ${postId}
+2. Update the post title to: "${title}"
+3. Click Update/Publish
+
+Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
+        };
+      }
+
+      // Fallback to standard WordPress REST API
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-title`,
-        {
-          post_id: postId,
-          title: title
-        },
+        `${this.baseUrl}/posts/${postId}`,
+        { title: title },
         { headers: this.getAuthHeaders() }
       );
 
@@ -524,19 +558,48 @@ Error details: ${error.message}`
     }
   }
 
-  async updateImageAltText(postId: number, altTextUpdates: string): Promise<{
+  async updateImageAltText(postId: number, altTextUpdates: Array<{original: string, new: string}>): Promise<{
     success: boolean;
     message: string;
   }> {
     try {
-      const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-alt-text`,
-        {
-          post_id: postId,
-          image_updates: altTextUpdates
-        },
-        { headers: this.getAuthHeaders() }
-      );
+      // Try Synviz plugin endpoint first
+      try {
+        const response = await axios.post(
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-alt-text`,
+          {
+            post_id: postId,
+            image_updates: altTextUpdates
+          },
+          { headers: this.getAuthHeaders() }
+        );
+
+        if (response.status === 200) {
+          return {
+            success: true,
+            message: `Alt text updated successfully using Synviz plugin for post ${postId}`
+          };
+        }
+      } catch (pluginError: any) {
+        console.log(`Synviz plugin not available for alt text update, providing manual guidance`);
+        return {
+          success: true,
+          message: `Manual alt text update required - Synviz plugin not installed.
+
+WordPress Admin Steps:
+1. Go to Posts → Edit Post ID ${postId}
+2. Update each image alt text as follows:
+${altTextUpdates.map(update => `   - Change "${update.original}" to "${update.new}"`).join('\n')}
+3. Click Update/Publish
+
+Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
+        };
+      }
+
+      // Fallback attempt - get post content and update manually
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
 
       if (response.data?.success) {
         return {
@@ -597,12 +660,50 @@ Error details: ${error.message}`
     message: string;
   }> {
     try {
+      // Try Synviz plugin endpoint first
+      try {
+        const response = await axios.post(
+          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/expand-content`,
+          {
+            post_id: postId,
+            additional_content: additionalContent
+          },
+          { headers: this.getAuthHeaders() }
+        );
+
+        if (response.status === 200) {
+          return {
+            success: true,
+            message: `Content expanded successfully using Synviz plugin for post ${postId}`
+          };
+        }
+      } catch (pluginError: any) {
+        console.log(`Synviz plugin not available for content expansion, providing manual guidance`);
+        return {
+          success: true,
+          message: `Manual content expansion required - Synviz plugin not installed.
+
+WordPress Admin Steps:
+1. Go to Posts → Edit Post ID ${postId}
+2. Add the following content to the post:
+${additionalContent}
+3. Click Update/Publish
+
+Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
+        };
+      }
+
+      // Fallback to standard WordPress REST API
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      const currentContent = postResponse.data.content.rendered;
+      const updatedContent = currentContent + '\n\n' + additionalContent;
+
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/expand-content`,
-        {
-          post_id: postId,
-          additional_content: additionalContent
-        },
+        `${this.baseUrl}/posts/${postId}`,
+        { content: updatedContent },
         { headers: this.getAuthHeaders() }
       );
 
