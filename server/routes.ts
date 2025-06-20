@@ -16,6 +16,61 @@ import { issueTracker } from "./services/issue-tracker";
 import { htmlIntegrityService } from "./services/html-integrity";
 // import { EmailService } from "./services/email"; // Disabled for now
 
+function getImplementationGuidance(fixType: string, optimizedValue: string): string {
+  const implementations: Record<string, string> = {
+    meta_description: `
+1. WordPress Admin → Pages/Posts → Edit the page
+2. Scroll to Yoast SEO or RankMath section
+3. Update Meta Description field with: "${optimizedValue}"
+4. Click Update to save changes
+5. Test with: site:yoursite.com "page title" in Google`,
+    
+    title_tag: `
+1. WordPress Admin → Pages/Posts → Edit the page  
+2. Update the main title field with: "${optimizedValue}"
+3. In Yoast/RankMath, ensure SEO title matches
+4. Click Update to save changes
+5. Check with browser dev tools: <title> tag`,
+    
+    title_optimization: `
+1. Edit the page title to: "${optimizedValue}"
+2. Keep it under 60 characters for full display
+3. Include primary keyword near the beginning
+4. Make it compelling for click-through
+5. Update across all SEO plugins consistently`,
+    
+    alt_text: `
+1. WordPress Media Library → Select images
+2. Add descriptive alt text for each image
+3. Include relevant keywords naturally
+4. Describe what the image shows
+5. Keep under 125 characters per alt tag`,
+    
+    content_expansion: `
+1. Add ${optimizedValue || '300-500'} more words of valuable content
+2. Include related keywords and topics
+3. Add FAQ section or detailed explanations
+4. Use proper heading structure (H2, H3)
+5. Ensure content serves user intent`,
+    
+    schema: `
+1. Install Schema Pro or similar plugin
+2. Add appropriate schema markup type
+3. Configure business/organization details
+4. Test with Google's Rich Results Tool
+5. Submit updated sitemap to Search Console`,
+    
+    internal_links: `
+1. Identify 3-5 relevant internal pages
+2. Add contextual links with descriptive anchor text
+3. Link to both parent and child pages
+4. Use varied, keyword-rich anchor text
+5. Ensure links open in same window`
+  };
+
+  return implementations[fixType] || `Apply ${fixType} optimization as recommended by SEO best practices.`;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const { sessionMiddleware, requireAuth, authenticateUser, createUser, getUserById, getTenantById } = await import('./auth.js');
   const { seedDatabase } = await import('./seed.js');
@@ -844,9 +899,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const fix of fixResults.fixes) {
         appliedFixes.push({
           type: fix.type,
-          description: fix.description || `Apply ${fix.type} optimization`,
-          recommendation: fix.optimizedValue || fix.suggestion,
-          implementation: getImplementationGuidance(fix.type, fix.optimizedValue),
+          description: `${fix.type.replace('_', ' ')} optimization: ${fix.reasoning}`,
+          recommendation: fix.optimizedValue || fix.currentValue,
+          implementation: getImplementationGuidance(fix.type, fix.optimizedValue || fix.currentValue),
           success: true
         });
       }

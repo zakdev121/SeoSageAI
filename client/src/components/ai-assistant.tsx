@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap, Edit, Copy, RefreshCw, Plus, Loader2, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap, Edit, Copy, RefreshCw, Plus, Loader2, CheckCircle, AlertCircle, XCircle, Settings, Wrench } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -951,6 +951,20 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
           <div>
             <h5 className="font-semibold mb-2">Technical Details</h5>
             <p className="text-sm text-gray-600">{resolution.actionPlan.technicalDetails}</p>
+          </div>
+        )}
+
+        {resolution.implementation && (
+          <div>
+            <h5 className="font-semibold mb-2 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              WordPress Implementation Steps
+            </h5>
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                {resolution.implementation}
+              </pre>
+            </div>
           </div>
         )}
         
