@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Lightbulb, Calendar, Zap, Edit, Copy, RefreshCw, Plus, Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +22,13 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   const [generatedBlogPost, setGeneratedBlogPost] = useState<any>(null);
   const [applyingFix, setApplyingFix] = useState<string | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [isWritingBlog, setIsWritingBlog] = useState(false);
+  const [blogContent, setBlogContent] = useState('');
+  const [isEditingBlog, setIsEditingBlog] = useState(false);
+  const [customTopic, setCustomTopic] = useState('');
+  const [customIndustry, setCustomIndustry] = useState('');
+  const [showCustomBlogForm, setShowCustomBlogForm] = useState(false);
+  const blogSectionRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch AI-generated issue resolutions
@@ -42,11 +51,54 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     }
   });
 
-  // Write blog post mutation
+  // Simulate real-time blog writing
+  const simulateTyping = (text: string, onUpdate: (partial: string) => void) => {
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      if (currentIndex <= text.length) {
+        onUpdate(text.substring(0, currentIndex));
+        currentIndex += Math.random() * 8 + 2; // Variable typing speed
+      } else {
+        clearInterval(interval);
+      }
+    }, 50);
+    return interval;
+  };
+
+  // Scroll to blog section
+  const scrollToBlogSection = () => {
+    if (blogSectionRef.current) {
+      blogSectionRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+  };
+
+  // Write blog post mutation with real-time simulation
   const writeBlogMutation = useMutation({
     mutationFn: async (topic: any) => {
+      setIsWritingBlog(true);
+      setBlogContent('');
+      scrollToBlogSection();
+      
       const response = await apiRequest("POST", `/api/audits/${auditId}/write-blog`, { topic });
-      return response.json();
+      const result = await response.json();
+      
+      // Simulate real-time writing
+      return new Promise((resolve) => {
+        const fullContent = result.blogPost?.content || '';
+        simulateTyping(fullContent, (partial) => {
+          setBlogContent(partial);
+        });
+        
+        // Complete after typing simulation
+        setTimeout(() => {
+          setIsWritingBlog(false);
+          setGeneratedBlogPost(result.blogPost);
+          resolve(result);
+        }, Math.min(fullContent.length * 50, 10000)); // Max 10 seconds
+      });
     },
     onSuccess: (data) => {
       setGeneratedBlogPost(data.blogPost);
@@ -92,9 +144,86 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
     }
   });
 
+  // Custom AI blog generator mutation
+  const customBlogMutation = useMutation({
+    mutationFn: async ({ topic, industry }: { topic: string; industry: string }) => {
+      setIsWritingBlog(true);
+      setBlogContent('');
+      scrollToBlogSection();
+      
+      const response = await apiRequest("POST", `/api/audits/${auditId}/write-custom-blog`, { 
+        topic, 
+        industry 
+      });
+      const result = await response.json();
+      
+      // Simulate real-time writing
+      return new Promise((resolve) => {
+        const fullContent = result.blogPost?.content || '';
+        simulateTyping(fullContent, (partial) => {
+          setBlogContent(partial);
+        });
+        
+        // Complete after typing simulation
+        setTimeout(() => {
+          setIsWritingBlog(false);
+          setGeneratedBlogPost(result.blogPost);
+          resolve(result);
+        }, Math.min(fullContent.length * 50, 10000)); // Max 10 seconds
+      });
+    },
+    onSuccess: () => {
+      setShowCustomBlogForm(false);
+      setCustomTopic('');
+      setCustomIndustry('');
+      toast({
+        title: "Custom blog post generated!",
+        description: "Your SEO-optimized blog post is ready.",
+      });
+    },
+    onError: (error) => {
+      setIsWritingBlog(false);
+      console.error('Error generating custom blog:', error);
+      toast({
+        title: "Error generating custom blog",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleWriteBlog = async (topic: any) => {
     setSelectedTopic(topic);
     await writeBlogMutation.mutateAsync(topic);
+  };
+
+  const handleCustomBlog = () => {
+    if (customTopic.trim() && customIndustry.trim()) {
+      customBlogMutation.mutate({ topic: customTopic, industry: customIndustry });
+    }
+  };
+
+  const handleRegenerateBlog = () => {
+    if (selectedTopic) {
+      writeBlogMutation.mutate(selectedTopic);
+    } else if (generatedBlogPost) {
+      const topic = {
+        title: generatedBlogPost.title,
+        targetKeyword: generatedBlogPost.title.split(' ').slice(0, 3).join(' '),
+        metaDescription: generatedBlogPost.metaDescription
+      };
+      writeBlogMutation.mutate(topic);
+    }
+  };
+
+  const handleCopyBlog = () => {
+    if (generatedBlogPost?.content) {
+      navigator.clipboard.writeText(generatedBlogPost.content);
+      toast({
+        title: "Blog content copied!",
+        description: "The blog content has been copied to your clipboard.",
+      });
+    }
   };
 
   const handleGenerateCalendar = async () => {
@@ -347,6 +476,68 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Custom Blog Generator */}
+              <Card className="border-2 border-dashed border-blue-300 bg-blue-50/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5 text-blue-600" />
+                        Ask AI to Write a New Blog
+                      </CardTitle>
+                      <CardDescription>
+                        Generate a custom SEO-optimized blog post on any topic you choose
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => setShowCustomBlogForm(!showCustomBlogForm)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {showCustomBlogForm ? 'Cancel' : 'Create Custom Blog'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {showCustomBlogForm && (
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="customTopic">Blog Topic</Label>
+                        <Input
+                          id="customTopic"
+                          placeholder="e.g., AI automation trends in 2025"
+                          value={customTopic}
+                          onChange={(e) => setCustomTopic(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="customIndustry">Industry Focus</Label>
+                        <Input
+                          id="customIndustry"
+                          placeholder="e.g., Technology, Healthcare, Finance"
+                          value={customIndustry}
+                          onChange={(e) => setCustomIndustry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleCustomBlog}
+                      disabled={!customTopic.trim() || !customIndustry.trim() || customBlogMutation.isPending}
+                      className="w-full"
+                    >
+                      {customBlogMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating SEO-Optimized Blog...
+                        </>
+                      ) : (
+                        'Generate Custom Blog Post'
+                      )}
+                    </Button>
+                  </CardContent>
+                )}
+              </Card>
 
               {/* Blog Topics */}
               {blogStrategy?.blogTopics?.length > 0 && (
