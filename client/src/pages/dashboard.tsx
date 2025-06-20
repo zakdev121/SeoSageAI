@@ -253,7 +253,7 @@ export default function Dashboard() {
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-cyan-600 mb-1">
                 {latestAudit.audit.results?.gscData?.last7Days?.totalClicks?.toLocaleString() || 
-                 Math.round((latestAudit.audit.results?.gscData?.totalClicks || 1247) * 0.15)?.toLocaleString() || '187'}
+                 latestAudit.audit.results?.gscData?.totalClicks?.toLocaleString() || '0'}
               </div>
               <div className="text-sm text-gray-600">Clicks (7 days)</div>
             </CardContent>
@@ -263,7 +263,7 @@ export default function Dashboard() {
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-indigo-600 mb-1">
                 {latestAudit.audit.results?.gscData?.last7Days?.totalImpressions?.toLocaleString() || 
-                 Math.round((latestAudit.audit.results?.gscData?.totalImpressions || 18932) * 0.12)?.toLocaleString() || '2,272'}
+                 latestAudit.audit.results?.gscData?.totalImpressions?.toLocaleString() || '0'}
               </div>
               <div className="text-sm text-gray-600">Impressions (7 days)</div>
             </CardContent>
