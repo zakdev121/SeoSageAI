@@ -16,61 +16,6 @@ import { issueTracker } from "./services/issue-tracker";
 import { htmlIntegrityService } from "./services/html-integrity";
 // import { EmailService } from "./services/email"; // Disabled for now
 
-function getImplementationGuidance(fixType: string, optimizedValue: string): string {
-  const implementations: Record<string, string> = {
-    meta_description: `
-1. WordPress Admin → Pages/Posts → Edit the page
-2. Scroll to Yoast SEO or RankMath section
-3. Update Meta Description field with: "${optimizedValue}"
-4. Click Update to save changes
-5. Test with: site:yoursite.com "page title" in Google`,
-    
-    title_tag: `
-1. WordPress Admin → Pages/Posts → Edit the page  
-2. Update the main title field with: "${optimizedValue}"
-3. In Yoast/RankMath, ensure SEO title matches
-4. Click Update to save changes
-5. Check with browser dev tools: <title> tag`,
-    
-    title_optimization: `
-1. Edit the page title to: "${optimizedValue}"
-2. Keep it under 60 characters for full display
-3. Include primary keyword near the beginning
-4. Make it compelling for click-through
-5. Update across all SEO plugins consistently`,
-    
-    alt_text: `
-1. WordPress Media Library → Select images
-2. Add descriptive alt text for each image
-3. Include relevant keywords naturally
-4. Describe what the image shows
-5. Keep under 125 characters per alt tag`,
-    
-    content_expansion: `
-1. Add ${optimizedValue || '300-500'} more words of valuable content
-2. Include related keywords and topics
-3. Add FAQ section or detailed explanations
-4. Use proper heading structure (H2, H3)
-5. Ensure content serves user intent`,
-    
-    schema: `
-1. Install Schema Pro or similar plugin
-2. Add appropriate schema markup type
-3. Configure business/organization details
-4. Test with Google's Rich Results Tool
-5. Submit updated sitemap to Search Console`,
-    
-    internal_links: `
-1. Identify 3-5 relevant internal pages
-2. Add contextual links with descriptive anchor text
-3. Link to both parent and child pages
-4. Use varied, keyword-rich anchor text
-5. Ensure links open in same window`
-  };
-
-  return implementations[fixType] || `Apply ${fixType} optimization as recommended by SEO best practices.`;
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
   const { sessionMiddleware, requireAuth, authenticateUser, createUser, getUserById, getTenantById } = await import('./auth.js');
   const { seedDatabase } = await import('./seed.js');
@@ -894,16 +839,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         issues
       });
 
-      // Generate implementation guidance for SEO fixes
+      // Apply fixes via WordPress API if available
       let appliedFixes = [];
-      for (const fix of fixResults.fixes) {
-        appliedFixes.push({
-          type: fix.type,
-          description: `${fix.type.replace('_', ' ')} optimization: ${fix.reasoning}`,
-          recommendation: fix.optimizedValue || fix.currentValue,
-          implementation: getImplementationGuidance(fix.type, fix.optimizedValue || fix.currentValue),
-          success: true
-        });
+      try {
+        const { WordPressService } = await import('./services/wordpress-api.js');
+        const wpService = new WordPressService(audit.url);
+        
+        for (const fix of fixResults.fixes) {
+          if (fix.type === 'meta_description' && fix.optimizedValue) {
+            const applied = await wpService.updatePageMetaDescription(pageUrl, fix.optimizedValue);
+            if (applied) {
+              appliedFixes.push({
+                type: fix.type,
+                description: `Updated meta description to: "${fix.optimizedValue.substring(0, 50)}..."`,
+                success: true
+              });
+            }
+          } else if (fix.type === 'title' && fix.optimizedValue) {
+            const applied = await wpService.updatePageTitle(pageUrl, fix.optimizedValue);
+            if (applied) {
+              appliedFixes.push({
+                type: fix.type,
+                description: `Updated title to: "${fix.optimizedValue}"`,
+                success: true
+              });
+            }
+          }
+        }
+      } catch (wpError) {
+        console.log('WordPress integration not available, returning recommendations only');
       }
 
       // Track the fix attempt
@@ -932,27 +896,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/audits/:id/apply-fix", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { issueType, pageUrl, optimizedValue } = req.body;
+      const { fix } = req.body;
       
       const audit = await storage.getAudit(auditId);
       if (!audit) {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      // Map frontend issue types to fix types
-      const issueTypeMapping = {
-        'Missing Meta Description': 'meta_description',
-        'Missing Title Tag': 'title_tag', 
-        'Long Title Tag': 'title_optimization',
-        'Missing Alt Text': 'alt_text',
-        'Thin Content': 'content_expansion',
-        'Missing Schema Markup': 'schema',
-        'Poor Internal Linking': 'internal_links'
-      };
-
-      const fixType = issueTypeMapping[issueType] || 'meta_description';
-      
-      // Map fix types to SEO engine expected types
+      // Map frontend fix types to SEO engine expected types
       const fixTypeMapping = {
         'meta_description': 'missing_meta_description',
         'title_tag': 'missing_title_tag',
@@ -963,63 +914,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'internal_links': 'poor_internal_linking'
       };
 
-      const mappedFixType = fixTypeMapping[fixType] || fixType;
+      const mappedFixType = fixTypeMapping[fix.type] || fix.type;
       
-      // Apply the SEO fix using WordPress API
-      const { WordPressService } = await import('./services/wordpress-api.js');
-      const wpService = new WordPressService('https://synviz.com');
-      
-      let result = { success: false, message: 'Fix not applied' };
-      
-      try {
-        // Get the post ID from URL
-        const postId = await wpService.getPostIdFromUrl(pageUrl);
-        
-        if (postId) {
-          // Apply the appropriate fix based on fix type
-          switch (fixType) {
-            case 'meta_description':
-              result = await wpService.updatePostMetaDescription(postId, optimizedValue);
-              break;
-            case 'title_tag':
-              result = await wpService.updatePostTitle(postId, optimizedValue);
-              break;
-            case 'title_optimization':
-              result = await wpService.updatePostTitle(postId, optimizedValue);
-              break;
-            case 'content_expansion':
-              result = await wpService.expandPostContent(postId, optimizedValue);
-              break;
-            case 'alt_text':
-              // Parse alt text updates from optimizedValue
-              const altTextUpdates = JSON.parse(optimizedValue);
-              result = await wpService.updateImageAltText(postId, altTextUpdates);
-              break;
-            default:
-              result = { success: false, message: `Fix type ${fixType} not supported` };
-          }
-        } else {
-          result = { success: false, message: 'Could not find post ID for URL' };
-        }
-      } catch (error: any) {
-        console.error('WordPress API error:', error);
-        result = { success: false, message: error.message || 'WordPress API error' };
-      }
+      // Use clean SEO engine for safe fix application (Pillar 3)
+      const { seoEngine } = await import('./core/seo-engine-simple.js');
+      const result = await seoEngine.applySafeFix(auditId, mappedFixType, fix.pageUrl || 'https://synviz.com/hire-now/');
       
       // If fix was successfully applied, mark it as fixed
       if (result.success) {
-        // Mark the specific issue as fixed based on the issue type
-        switch (issueType) {
-          case 'Missing Meta Description':
-            await storage.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
+        // Extract page URL from fix context or use default
+        const pageUrl = fix.pageUrl || 'https://synviz.com/top-qualities-of-it-software-company/';
+        
+        // Mark the specific issue as fixed based on the fix type
+        switch (fix.type) {
+          case 'meta_description':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Meta Description', pageUrl);
             console.log(`✓ Marked "Missing Meta Description" as fixed for ${pageUrl}`);
             break;
-          case 'Missing Title Tag':
-            await storage.markIssueAsFixed(auditId, 'Missing Title Tag', pageUrl);
+          case 'title_tag':
+            await issueTracker.markIssueAsFixed(auditId, 'Missing Title Tag', pageUrl);
             console.log(`✓ Marked "Missing Title Tag" as fixed for ${pageUrl}`);
             break;
-          case 'Long Title Tag':
-            await storage.markIssueAsFixed(auditId, 'Long Title Tag', pageUrl);
+          case 'title_optimization':
+            await issueTracker.markIssueAsFixed(auditId, 'Long Title Tag', pageUrl);
             console.log(`✓ Marked "Long Title Tag" as fixed for ${pageUrl}`);
             break;
           case 'alt_text':
@@ -1048,159 +965,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced batch SEO fix application with custom WordPress plugin endpoints
   app.post("/api/audits/:id/apply-fixes-batch", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const { fixes, siteUrl = 'https://synviz.com' } = req.body;
+      const { fixes } = req.body;
       
       const audit = await storage.getAudit(auditId);
       if (!audit) {
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      const wpService = new WordPressService(siteUrl);
+      const wpService = new WordPressService('https://synviz.com');
+      const results = await wpService.batchApplyFixes(fixes);
       
-      // Test connection to ensure SEO Agent plugin is available
-      const canConnect = await wpService.testConnection();
-      if (!canConnect) {
-        return res.status(400).json({
-          error: 'Unable to connect to WordPress site. Please ensure the SEO Agent plugin is installed and activated.'
-        });
-      }
-
-      const results = [];
-      let successCount = 0;
-      let criticalFixed = 0;
-      let mediumFixed = 0;
-      let quickWinFixed = 0;
-
-      // Process fixes by priority: Critical -> Medium -> Quick Wins
-      const sortedFixes = fixes.sort((a, b) => {
-        const priorityOrder = { 'critical': 1, 'medium': 2, 'low': 3 };
-        return (priorityOrder[a.severity] || 3) - (priorityOrder[b.severity] || 3);
-      });
-
-      for (const fix of sortedFixes) {
-        try {
-          console.log(`Applying ${fix.severity} SEO fix: ${fix.type} for ${fix.pageUrl || 'default page'}`);
-          
-          let result;
-          
-          switch (fix.type) {
-            case 'meta_description':
-              result = await wpService.updatePostMetaDescription(fix.postId || 0, fix.newValue);
-              break;
-              
-            case 'title_tag':
-            case 'title_optimization':
-              result = await wpService.updatePostTitle(fix.postId || 0, fix.newValue);
-              break;
-              
-            case 'alt_text':
-              result = await wpService.updateImageAltText(fix.postId || 0, fix.newValue);
-              break;
-              
-            case 'schema':
-              try {
-                const schemaData = typeof fix.newValue === 'string' ? JSON.parse(fix.newValue) : fix.newValue;
-                result = await wpService.addSchemaMarkup(fix.postId || 0, schemaData);
-              } catch (parseError) {
-                result = { success: false, message: 'Invalid schema JSON format' };
-              }
-              break;
-              
-            case 'internal_links':
-              try {
-                const links = typeof fix.newValue === 'string' ? JSON.parse(fix.newValue) : fix.newValue;
-                result = await wpService.addInternalLinks(fix.postId || 0, links);
-              } catch (parseError) {
-                result = { success: false, message: 'Invalid links format' };
-              }
-              break;
-              
-            case 'content_expansion':
-              result = await wpService.expandPostContent(fix.postId || 0, fix.newValue);
-              break;
-              
-            default:
-              result = { success: false, message: `Unsupported fix type: ${fix.type}` };
-          }
-
-          if (result.success) {
-            // Mark issue as fixed in database
-            if (fix.issueId) {
-              await storage.markSeoIssueAsFixed(fix.issueId);
-            }
-            
-            // Track fix in legacy system for compatibility
-            const pageUrl = fix.pageUrl || audit.url;
-            await storage.markIssueAsFixed(auditId, fix.type, pageUrl);
-            
-            successCount++;
-            
-            // Count by severity
-            switch (fix.severity) {
-              case 'critical': criticalFixed++; break;
-              case 'medium': mediumFixed++; break;
-              case 'low': quickWinFixed++; break;
-            }
-            
-            console.log(`✓ Successfully applied ${fix.type} fix (${fix.severity})`);
-          } else {
-            console.log(`✗ Failed to apply ${fix.type} fix: ${result.message}`);
-          }
-
-          results.push({
-            ...fix,
-            result,
-            appliedAt: new Date().toISOString()
-          });
-          
-          // Add delay between fixes to prevent overwhelming the server
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-        } catch (error: any) {
-          console.error(`Error applying ${fix.type} fix:`, error);
-          results.push({
-            ...fix,
-            result: {
-              success: false,
-              message: `Error applying fix: ${error.message}`
-            }
-          });
-        }
-      }
-
-      // Generate comprehensive summary
-      const summary = {
-        totalFixes: fixes.length,
-        successCount,
-        failureCount: fixes.length - successCount,
-        criticalFixed,
-        mediumFixed,
-        quickWinFixed,
-        successRate: Math.round((successCount / fixes.length) * 100)
-      };
-
-      res.json({
-        success: successCount > 0,
-        message: `Applied ${successCount} out of ${fixes.length} SEO fixes successfully`,
-        summary,
-        results,
-        recommendations: {
-          critical: criticalFixed > 0 ? `Fixed ${criticalFixed} critical issues that significantly impact SEO` : 'No critical issues addressed',
-          medium: mediumFixed > 0 ? `Resolved ${mediumFixed} medium priority optimizations` : 'No medium priority fixes applied',
-          quickWins: quickWinFixed > 0 ? `Completed ${quickWinFixed} quick wins for immediate improvements` : 'No quick wins implemented'
-        }
-      });
-      
-    } catch (error: any) {
-      console.error('Error applying batch SEO fixes:', error);
-      res.status(500).json({ 
-        error: 'Failed to apply SEO fixes',
-        details: error.message 
-      });
+      res.json({ results });
+    } catch (error) {
+      console.error('Error applying SEO fixes:', error);
+      res.status(500).json({ error: 'Failed to apply SEO fixes' });
     }
   });
 

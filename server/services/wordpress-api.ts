@@ -70,54 +70,6 @@ export class WordPressService {
     }
   }
 
-  async getPostIdFromUrl(pageUrl: string): Promise<number | null> {
-    try {
-      // Try to extract post ID from URL patterns
-      const urlPatterns = [
-        /\/\?p=(\d+)/,           // ?p=123
-        /\/(\d+)\/?$/,           // /123/
-        /\/([^\/]+)\/?$/         // /post-slug/
-      ];
-
-      // First try direct ID extraction
-      for (const pattern of urlPatterns.slice(0, 2)) {
-        const match = pageUrl.match(pattern);
-        if (match) {
-          return parseInt(match[1]);
-        }
-      }
-
-      // If no direct ID, try to find by slug
-      const slugMatch = pageUrl.match(/\/([^\/]+)\/?$/);
-      if (slugMatch) {
-        const slug = slugMatch[1];
-        
-        // Search in posts
-        const postsResponse = await axios.get(`${this.baseUrl}/posts?slug=${slug}`, {
-          headers: this.getAuthHeaders()
-        });
-        
-        if (postsResponse.data && postsResponse.data.length > 0) {
-          return postsResponse.data[0].id;
-        }
-
-        // Search in pages
-        const pagesResponse = await axios.get(`${this.baseUrl}/pages?slug=${slug}`, {
-          headers: this.getAuthHeaders()
-        });
-        
-        if (pagesResponse.data && pagesResponse.data.length > 0) {
-          return pagesResponse.data[0].id;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error getting post ID from URL:', error);
-      return null;
-    }
-  }
-
   async getAllPosts(): Promise<WordPressPost[]> {
     try {
       const allPosts: WordPressPost[] = [];
@@ -290,95 +242,97 @@ export class WordPressService {
     integrityReport?: any;
     rollbackPerformed?: boolean;
   }> {
+    let pageUrl = '';
+    let beforeReport: HTMLIntegrityReport | null = null;
+    
     try {
-      // First try custom Synviz plugin endpoint
-      console.log(`Attempting to update meta description for post ${postId} using Synviz plugin`);
-      try {
-        const customResponse = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
-          {
-            post_id: postId,
-            update: {
-              meta: {
-                "_yoast_wpseo_metadesc": metaDescription
-              }
-            }
-          },
-          { headers: this.getAuthHeaders() }
-        );
-
-        if (customResponse.status === 200) {
-          return {
-            success: true,
-            message: `Meta description updated successfully using Synviz plugin for post ${postId}`
-          };
-        }
-      } catch (pluginError: any) {
-        console.log(`Custom SEO Agent plugin not available (${pluginError.response?.status || 'connection error'}), providing manual implementation guidance`);
-        
-        // Return detailed manual fix guidance when plugin endpoints aren't available
+      // Get the post URL first
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+      pageUrl = postResponse.data.link || postResponse.data.guid?.rendered || `${this.baseUrl.replace('/wp-json/wp/v2', '')}/?p=${postId}`;
+      
+      // Check HTML integrity BEFORE making changes
+      console.log(`🔍 Checking HTML integrity before update: ${pageUrl}`);
+      beforeReport = await htmlIntegrityService.checkPageIntegrity(pageUrl);
+      
+      if (!beforeReport.isValid) {
         return {
-          success: true, // Mark as successful since we're providing implementation guidance
-          message: `Manual implementation required - Synviz plugin not installed.
-
-WordPress Admin Steps:
-1. Go to your WordPress Dashboard
-2. Navigate to Posts → Edit Post ID ${postId}
-3. Scroll to Yoast SEO or RankMath section
-4. Update Meta Description field with: "${metaDescription}"
-5. Click Update/Publish
-
-Alternative: Install Synviz plugin for automated fixes
-- Upload plugin files to /wp-content/plugins/synviz/
-- Activate the plugin in WordPress Admin
-- Re-run this fix for automatic application
-
-Implementation guidance provided (Plugin endpoint status: ${pluginError.response?.status || 'unavailable'})`
+          success: false,
+          message: `Critical page detected: HTML structure is already compromised. Cannot safely update without risking further damage. Errors: ${beforeReport.criticalErrors.join(', ')}`,
+          integrityReport: beforeReport
         };
       }
 
-      // Fallback to standard WordPress REST API with Yoast integration
-      console.log(`Updating meta description for post ${postId} using WordPress REST API`);
-      
-      // Try updating via Yoast meta
-      const yoastResponse = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
+      // Apply the meta description update
+      console.log(`Updating meta description for post ${postId}`);
+      const updateResponse = await axios.post(
+        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
         {
-          yoast_head_json: {
-            description: metaDescription
-          },
-          meta: {
-            _yoast_wpseo_metadesc: metaDescription
-          }
+          post_id: postId,
+          meta_description: metaDescription
         },
         { headers: this.getAuthHeaders() }
       );
 
-      if (yoastResponse.status === 200) {
-        return {
-          success: true,
-          message: `Meta description updated successfully via WordPress REST API for post ${postId}. Manual verification recommended.`
-        };
-      } else {
+      if (!updateResponse.data?.success) {
         return {
           success: false,
-          message: `Failed to update meta description via WordPress REST API. Status: ${yoastResponse.status}`
+          message: 'Failed to apply meta description update'
         };
       }
 
+      // Wait for changes to propagate
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Check HTML integrity AFTER making changes  
+      console.log(`🔍 Checking HTML integrity after update: ${pageUrl}`);
+      const afterReport = await htmlIntegrityService.checkPageIntegrity(pageUrl);
+
+      // Compare integrity reports
+      const comparison = await htmlIntegrityService.compareIntegrity(beforeReport, afterReport);
+
+      if (!comparison.integrityMaintained || comparison.newErrors.length > 0) {
+        console.error(`❌ HTML integrity compromised! New errors: ${comparison.newErrors.join(', ')}`);
+        
+        // Attempt automatic rollback
+        console.log(`🔄 Attempting automatic rollback for post ${postId}`);
+        const rollbackSuccess = await this.rollbackMetaChanges(postId);
+        
+        return {
+          success: false,
+          message: `Critical page update failed: HTML structure was compromised after applying meta description. ${rollbackSuccess ? 'Automatic rollback completed.' : 'Rollback failed - manual intervention required.'} New errors detected: ${comparison.newErrors.join(', ')}`,
+          integrityReport: { before: beforeReport, after: afterReport, comparison },
+          rollbackPerformed: rollbackSuccess
+        };
+      }
+
+      // Success - integrity maintained
+      console.log(`✅ Meta description updated successfully with HTML integrity maintained`);
+      return {
+        success: true,
+        message: 'Meta description updated successfully with HTML integrity verified',
+        integrityReport: { before: beforeReport, after: afterReport, comparison }
+      };
+
     } catch (error: any) {
-      console.error('Error updating meta description:', error);
+      console.error(`Error in safe meta description update:`, error);
       
-      // Provide detailed implementation guidance when API fails
+      // If we have reports, attempt rollback
+      if (beforeReport && pageUrl) {
+        console.log(`🔄 Error occurred, attempting rollback for post ${postId}`);
+        const rollbackSuccess = await this.rollbackMetaChanges(postId);
+        
+        return {
+          success: false,
+          message: `Update failed due to error: ${error.message}. ${rollbackSuccess ? 'Automatic rollback completed.' : 'Rollback failed - manual intervention required.'}`,
+          rollbackPerformed: rollbackSuccess
+        };
+      }
+
       return {
         success: false,
-        message: `WordPress API connection failed. To manually apply this fix:
-1. Log into WordPress Admin Dashboard
-2. Edit Post ID ${postId}
-3. Scroll to Yoast SEO or SEO settings
-4. Update Meta Description to: "${metaDescription}"
-5. Save changes
-Error details: ${error.message}`
+        message: `Failed to update meta description: ${error.message}`
       };
     }
   }
@@ -446,7 +400,7 @@ Error details: ${error.message}`
       }
 
       const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/update-meta`,
+        `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-meta`,
         updatePayload,
         { headers: this.getAuthHeaders() }
       );
@@ -460,270 +414,119 @@ Error details: ${error.message}`
     }
   }
 
-  async updatePostTitle(postId: number, title: string): Promise<{
-    success: boolean;
-    message: string;
-  }> {
+  async updatePostTitle(postId: number, title: string): Promise<boolean> {
     try {
-      // Try Synviz plugin endpoint first
-      try {
-        const response = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/optimize-title`,
-          {
-            post_id: postId,
-            optimized_title: title
-          },
-          { headers: this.getAuthHeaders() }
-        );
-
-        if (response.status === 200) {
-          return {
-            success: true,
-            message: `Title updated successfully using Synviz plugin for post ${postId}`
-          };
-        }
-      } catch (pluginError: any) {
-        console.log(`Synviz plugin not available for title update, providing manual guidance`);
-        return {
-          success: true,
-          message: `Manual title update required - Synviz plugin not installed.
-
-WordPress Admin Steps:
-1. Go to Posts → Edit Post ID ${postId}
-2. Update the post title to: "${title}"
-3. Click Update/Publish
-
-Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
-        };
-      }
-
-      // Fallback to standard WordPress REST API
+      // Use custom plugin endpoint for title optimization
       const response = await axios.post(
-        `${this.baseUrl}/posts/${postId}`,
-        { title: title },
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/optimize-title`,
+        {
+          post_id: postId,
+          optimized_title: title
+        },
         { headers: this.getAuthHeaders() }
       );
 
-      if (response.data?.success) {
-        return {
-          success: true,
-          message: `Title updated successfully for post ${postId}`
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data?.message || 'Failed to update title'
-        };
-      }
-    } catch (error: any) {
+      return response.data?.success === true;
+    } catch (error) {
       console.error('Error updating post title:', error);
-      return {
-        success: false,
-        message: `Error updating title: ${error.message}`
-      };
+      return false;
     }
   }
 
-  async addSchemaMarkup(postId: number, schemaJson: object): Promise<{
-    success: boolean;
-    message: string;
-  }> {
+  async addSchemaMarkup(postId: number, schemaJson: object): Promise<boolean> {
     try {
-      const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/add-schema`,
-        {
-          post_id: postId,
-          schema_data: schemaJson
-        },
-        { headers: this.getAuthHeaders() }
-      );
-
-      if (response.data?.success) {
-        return {
-          success: true,
-          message: `Schema markup added successfully for post ${postId}`
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data?.message || 'Failed to add schema markup'
-        };
-      }
-    } catch (error: any) {
-      console.error('Error adding schema markup:', error);
-      return {
-        success: false,
-        message: `Error adding schema markup: ${error.message}`
-      };
-    }
-  }
-
-  async updateImageAltText(postId: number, altTextUpdates: Array<{original: string, new: string}>): Promise<{
-    success: boolean;
-    message: string;
-  }> {
-    try {
-      // Try Synviz plugin endpoint first
-      try {
-        const response = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/update-alt-text`,
-          {
-            post_id: postId,
-            image_updates: altTextUpdates
-          },
-          { headers: this.getAuthHeaders() }
-        );
-
-        if (response.status === 200) {
-          return {
-            success: true,
-            message: `Alt text updated successfully using Synviz plugin for post ${postId}`
-          };
-        }
-      } catch (pluginError: any) {
-        console.log(`Synviz plugin not available for alt text update, providing manual guidance`);
-        return {
-          success: true,
-          message: `Manual alt text update required - Synviz plugin not installed.
-
-WordPress Admin Steps:
-1. Go to Posts → Edit Post ID ${postId}
-2. Update each image alt text as follows:
-${altTextUpdates.map(update => `   - Change "${update.original}" to "${update.new}"`).join('\n')}
-3. Click Update/Publish
-
-Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
-        };
-      }
-
-      // Fallback attempt - get post content and update manually
+      // Get current post content
       const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
         headers: this.getAuthHeaders()
       });
 
-      if (response.data?.success) {
-        return {
-          success: true,
-          message: `Alt text updated successfully for post ${postId}`
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data?.message || 'Failed to update alt text'
-        };
-      }
-    } catch (error: any) {
-      console.error('Error updating image alt text:', error);
-      return {
-        success: false,
-        message: `Error updating alt text: ${error.message}`
-      };
-    }
-  }
-
-  async addInternalLinks(postId: number, links: Array<{anchor: string, url: string}>): Promise<{
-    success: boolean;
-    message: string;
-  }> {
-    try {
-      const response = await axios.post(
-        `${this.baseUrl.replace('/wp/v2', '')}/seo-agent/v1/add-internal-links`,
-        {
-          post_id: postId,
-          links: links
-        },
-        { headers: this.getAuthHeaders() }
-      );
-
-      if (response.data?.success) {
-        return {
-          success: true,
-          message: `Internal links added successfully for post ${postId}`
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data?.message || 'Failed to add internal links'
-        };
-      }
-    } catch (error: any) {
-      console.error('Error adding internal links:', error);
-      return {
-        success: false,
-        message: `Error adding internal links: ${error.message}`
-      };
-    }
-  }
-
-  async expandPostContent(postId: number, additionalContent: string): Promise<{
-    success: boolean;
-    message: string;
-  }> {
-    try {
-      // Try Synviz plugin endpoint first
-      try {
-        const response = await axios.post(
-          `${this.baseUrl.replace('/wp/v2', '')}/synviz/v1/expand-content`,
-          {
-            post_id: postId,
-            additional_content: additionalContent
-          },
-          { headers: this.getAuthHeaders() }
-        );
-
-        if (response.status === 200) {
-          return {
-            success: true,
-            message: `Content expanded successfully using Synviz plugin for post ${postId}`
-          };
-        }
-      } catch (pluginError: any) {
-        console.log(`Synviz plugin not available for content expansion, providing manual guidance`);
-        return {
-          success: true,
-          message: `Manual content expansion required - Synviz plugin not installed.
-
-WordPress Admin Steps:
-1. Go to Posts → Edit Post ID ${postId}
-2. Add the following content to the post:
-${additionalContent}
-3. Click Update/Publish
-
-Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
-        };
-      }
-
-      // Fallback to standard WordPress REST API
-      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
-        headers: this.getAuthHeaders()
-      });
-      
       const currentContent = postResponse.data.content.rendered;
-      const updatedContent = currentContent + '\n\n' + additionalContent;
+      const schemaScript = `\n<script type="application/ld+json">\n${JSON.stringify(schemaJson, null, 2)}\n</script>`;
+      
+      // Add schema to post content
+      const updatedContent = currentContent + schemaScript;
 
       const response = await axios.post(
         `${this.baseUrl}/posts/${postId}`,
-        { content: updatedContent },
+        {
+          content: updatedContent
+        },
         { headers: this.getAuthHeaders() }
       );
 
-      if (response.data?.success) {
-        return {
-          success: true,
-          message: `Content expanded successfully for post ${postId}`
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data?.message || 'Failed to expand content'
-        };
-      }
-    } catch (error: any) {
+      return response.status === 200;
+    } catch (error) {
+      console.error('Error adding schema markup:', error);
+      return false;
+    }
+  }
+
+  async updateImageAltText(postId: number, altTextUpdates: string): Promise<boolean> {
+    try {
+      // Use custom plugin endpoint for alt text updates
+      const response = await axios.post(
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/update-alt-text`,
+        {
+          post_id: postId,
+          image_updates: JSON.parse(altTextUpdates)
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      return response.data?.success === true;
+    } catch (error) {
+      console.error('Error updating image alt text:', error);
+      return false;
+    }
+  }
+
+  async addInternalLinks(postId: number, links: Array<{anchor: string, url: string}>): Promise<boolean> {
+    try {
+      // Get current post content
+      const postResponse = await axios.get(`${this.baseUrl}/posts/${postId}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      let content = postResponse.data.content.rendered;
+
+      // Add internal links to content
+      links.forEach(link => {
+        const linkHtml = `<a href="${link.url}">${link.anchor}</a>`;
+        // Replace first occurrence of anchor text with link
+        content = content.replace(new RegExp(`\\b${link.anchor}\\b`, 'i'), linkHtml);
+      });
+
+      const response = await axios.post(
+        `${this.baseUrl}/posts/${postId}`,
+        {
+          content: content
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      return response.status === 200;
+    } catch (error) {
+      console.error('Error adding internal links:', error);
+      return false;
+    }
+  }
+
+  async expandPostContent(postId: number, additionalContent: string): Promise<boolean> {
+    try {
+      // Use custom plugin endpoint for content expansion
+      const response = await axios.post(
+        `${this.baseUrl.replace('/wp-json/wp/v2', '')}/wp-json/synviz/v1/expand-content`,
+        {
+          post_id: postId,
+          additional_content: additionalContent
+        },
+        { headers: this.getAuthHeaders() }
+      );
+
+      return response.data?.success === true;
+    } catch (error) {
       console.error('Error expanding post content:', error);
-      return {
-        success: false,
-        message: `Error expanding content: ${error.message}`
-      };
+      return false;
     }
   }
 
@@ -758,19 +561,16 @@ Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
           break;
 
         case 'title_tag':
-          const titleResult = await this.updatePostTitle(targetPostId, fix.newValue);
-          success = titleResult.success;
-          message = titleResult.message;
+          success = await this.updatePostTitle(targetPostId, fix.newValue);
+          message = success ? 'Title updated successfully' : 'Failed to update title';
           break;
 
         case 'schema':
           try {
             const schemaData = JSON.parse(fix.newValue);
-            const schemaResult = await this.addSchemaMarkup(fix.postId, schemaData);
-            success = schemaResult.success;
-            message = schemaResult.message;
+            success = await this.addSchemaMarkup(fix.postId, schemaData);
+            message = success ? 'Schema markup added successfully' : 'Failed to add schema markup';
           } catch {
-            success = false;
             message = 'Invalid schema JSON format';
           }
           break;
@@ -778,33 +578,28 @@ Plugin endpoint status: ${pluginError.response?.status || 'unavailable'}`
         case 'internal_links':
           try {
             const links = JSON.parse(fix.newValue);
-            const linksResult = await this.addInternalLinks(fix.postId, links);
-            success = linksResult.success;
-            message = linksResult.message;
+            success = await this.addInternalLinks(fix.postId, links);
+            message = success ? 'Internal links added successfully' : 'Failed to add internal links';
           } catch {
-            success = false;
             message = 'Invalid links format';
           }
           break;
 
         case 'alt_text':
-          const altResult = await this.updateImageAltText(fix.postId, fix.newValue);
-          success = altResult.success;
-          message = altResult.message;
+          success = await this.updateImageAltText(fix.postId, fix.newValue);
+          message = success ? 'Image alt text updated successfully' : 'Failed to update alt text';
           break;
 
         case 'title_optimization':
           // Optimize long titles by shortening while preserving key information
-          const titleOptResult = await this.updatePostTitle(targetPostId, fix.newValue);
-          success = titleOptResult.success;
-          message = titleOptResult.message;
+          success = await this.updatePostTitle(targetPostId, fix.newValue);
+          message = success ? 'Title optimized successfully' : 'Failed to optimize title';
           break;
 
         case 'content_expansion':
           // Expand thin content with additional relevant information
-          const contentResult = await this.expandPostContent(targetPostId, fix.newValue);
-          success = contentResult.success;
-          message = contentResult.message;
+          success = await this.expandPostContent(targetPostId, fix.newValue);
+          message = success ? 'Content expanded successfully' : 'Failed to expand content';
           break;
 
         default:
