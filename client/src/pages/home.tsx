@@ -18,7 +18,7 @@ export default function Home() {
     queryKey: ["/api/dashboard"],
   });
 
-  const hasExistingAudits = dashboardData && dashboardData.length > 0;
+  const hasExistingAudits = Array.isArray(dashboardData) && dashboardData.length > 0;
 
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
