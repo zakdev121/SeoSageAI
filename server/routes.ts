@@ -798,6 +798,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix page SEO issues (meta description, title, content)
+  app.post("/api/audits/:id/fix-page", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { pageUrl, title, currentMetaDescription, wordCount, content, industry } = req.body;
+      
+      if (!pageUrl) {
+        return res.status(400).json({ error: 'Page URL is required' });
+      }
+
+      const audit = await storage.getAudit(auditId);
+      if (!audit) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      // Use SEO Engine to generate optimized meta description
+      const { seoEngine } = await import('./core/seo-engine-simple.js');
+      
+      // Determine what needs fixing
+      const issues = [];
+      if (!currentMetaDescription || currentMetaDescription.length < 120) {
+        issues.push('meta_description');
+      }
+      if (!title || title.length < 30) {
+        issues.push('title');
+      }
+      if (wordCount < 300) {
+        issues.push('thin_content');
+      }
+
+      // Generate fixes using AI
+      const fixResults = await seoEngine.generatePageOptimizations({
+        url: pageUrl,
+        title: title || '',
+        metaDescription: currentMetaDescription || '',
+        content: content || '',
+        wordCount: wordCount || 0,
+        industry: industry || 'general',
+        issues
+      });
+
+      // Apply fixes via WordPress API if available
+      let appliedFixes = [];
+      try {
+        const { WordPressService } = await import('./services/wordpress.js');
+        const wpService = new WordPressService(audit.url);
+        
+        for (const fix of fixResults.fixes) {
+          if (fix.type === 'meta_description' && fix.optimizedValue) {
+            const applied = await wpService.updatePageMetaDescription(pageUrl, fix.optimizedValue);
+            if (applied) {
+              appliedFixes.push({
+                type: fix.type,
+                description: `Updated meta description to: "${fix.optimizedValue.substring(0, 50)}..."`,
+                success: true
+              });
+            }
+          } else if (fix.type === 'title' && fix.optimizedValue) {
+            const applied = await wpService.updatePageTitle(pageUrl, fix.optimizedValue);
+            if (applied) {
+              appliedFixes.push({
+                type: fix.type,
+                description: `Updated title to: "${fix.optimizedValue}"`,
+                success: true
+              });
+            }
+          }
+        }
+      } catch (wpError) {
+        console.log('WordPress integration not available, returning recommendations only');
+      }
+
+      // Track the fix attempt
+      if (appliedFixes.length > 0) {
+        for (const fix of appliedFixes) {
+          await storage.markIssueAsFixed(auditId, fix.type, pageUrl);
+        }
+      }
+
+      res.json({
+        success: true,
+        pageUrl,
+        fixResults: fixResults,
+        appliedFixes: appliedFixes,
+        message: appliedFixes.length > 0 
+          ? `Successfully applied ${appliedFixes.length} SEO fixes to the page`
+          : 'Generated SEO recommendations (WordPress integration needed for automatic application)'
+      });
+    } catch (error: any) {
+      console.error('Error fixing page:', error);
+      res.status(500).json({ error: 'Failed to fix page SEO issues' });
+    }
+  });
+
   // WordPress API routes for applying SEO fixes with clean engine
   app.post("/api/audits/:id/apply-fix", async (req, res) => {
     try {

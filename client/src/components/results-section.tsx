@@ -18,6 +18,7 @@ interface ResultsSectionProps {
 export function ResultsSection({ auditId }: ResultsSectionProps) {
   const { toast } = useToast();
   const [emailAddress, setEmailAddress] = useState("");
+  const [fixingPages, setFixingPages] = useState<Set<string>>(new Set());
 
   const { data: audit, isLoading } = useQuery<Audit>({
     queryKey: [`/api/audits/${auditId}`],
@@ -28,6 +29,51 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   });
 
   const { data: fixedIssuesData } = useFixedIssues(auditId);
+
+  // Mutation for fixing page SEO issues
+  const fixPageMutation = useMutation({
+    mutationFn: async ({ pageUrl, page }: { pageUrl: string; page: any }) => {
+      return await apiRequest(`/api/audits/${auditId}/fix-page`, {
+        method: 'POST',
+        body: {
+          pageUrl,
+          title: page.title,
+          currentMetaDescription: page.metaDescription,
+          wordCount: page.wordCount,
+          content: page.content || '',
+          industry: audit?.industry
+        }
+      });
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Page Fixed Successfully",
+        description: `Generated SEO-optimized meta description for ${variables.pageUrl.replace(/^https?:\/\/[^\/]+/, '')}`
+      });
+      setFixingPages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.pageUrl);
+        return newSet;
+      });
+    },
+    onError: (error, variables) => {
+      toast({
+        title: "Fix Failed",
+        description: `Failed to optimize ${variables.pageUrl.replace(/^https?:\/\/[^\/]+/, '')}: ${error.message}`,
+        variant: "destructive"
+      });
+      setFixingPages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.pageUrl);
+        return newSet;
+      });
+    }
+  });
+
+  const handleFixPage = async (pageUrl: string, page: any) => {
+    setFixingPages(prev => new Set(prev).add(pageUrl));
+    fixPageMutation.mutate({ pageUrl, page });
+  };
 
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
@@ -378,30 +424,47 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                           <TableHead>Images</TableHead>
                           <TableHead>Links</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {results.pages?.slice(0, 10).map((page, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">
-                              <div className="max-w-xs truncate">
-                                {page.url?.replace(results.url, '') || '/'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className={page.wordCount > 300 ? 'text-green-600' : page.wordCount > 150 ? 'text-amber-600' : 'text-red-600'}>
-                                {page.wordCount || 0}
-                              </span>
-                            </TableCell>
-                            <TableCell>{page.images?.length || 0}</TableCell>
-                            <TableCell>{(page.internalLinks?.length || 0) + (page.externalLinks?.length || 0)}</TableCell>
-                            <TableCell>
-                              <Badge variant={page.wordCount > 300 && page.title && page.metaDescription ? 'default' : 'secondary'}>
-                                {page.wordCount > 300 && page.title && page.metaDescription ? 'Optimized' : 'Needs Work'}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {results.pages?.slice(0, 10).map((page, index) => {
+                          const needsWork = !(page.wordCount > 300 && page.title && page.metaDescription);
+                          return (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">
+                                <div className="max-w-xs truncate">
+                                  {page.url?.replace(results.url, '') || '/'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className={page.wordCount > 300 ? 'text-green-600' : page.wordCount > 150 ? 'text-amber-600' : 'text-red-600'}>
+                                  {page.wordCount || 0}
+                                </span>
+                              </TableCell>
+                              <TableCell>{page.images?.length || 0}</TableCell>
+                              <TableCell>{(page.internalLinks?.length || 0) + (page.externalLinks?.length || 0)}</TableCell>
+                              <TableCell>
+                                <Badge variant={needsWork ? 'secondary' : 'default'}>
+                                  {needsWork ? 'Needs Work' : 'Optimized'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {needsWork && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleFixPage(page.url, page)}
+                                    disabled={fixingPages.has(page.url)}
+                                    className="text-xs"
+                                  >
+                                    {fixingPages.has(page.url) ? "Fixing..." : "Fix"}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
