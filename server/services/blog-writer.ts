@@ -250,6 +250,8 @@ Requirements:
 - Optimize for search engines while maintaining readability
 - Structure with clear sections and subheadings
 
+IMPORTANT: Write ONLY the HTML content without markdown code blocks. Start directly with <html> and end with </html>. Do NOT use '''html or any markdown formatting. Return pure HTML code that can be directly inserted into a webpage.
+
 Write the complete blog post content with proper HTML formatting. Make it authoritative, engaging, and valuable.`;
 
     try {
@@ -258,7 +260,7 @@ Write the complete blog post content with proper HTML formatting. Make it author
         messages: [
           {
             role: "system",
-            content: "You are an expert SEO content writer. Write complete, full-length blog posts with proper HTML formatting. Focus on providing genuine value and actionable insights."
+            content: "You are an expert SEO content writer. Write complete, full-length blog posts with proper HTML formatting. CRITICAL: Return ONLY valid HTML code starting with <html> and ending with </html>. Do NOT use markdown code blocks like ```html or '''html. Return pure HTML that can be directly inserted into a webpage. Focus on providing genuine value and actionable insights."
           },
           {
             role: "user",
@@ -280,11 +282,39 @@ Write the complete blog post content with proper HTML formatting. Make it author
         }
       }
       
+      // Clean up any markdown artifacts and ensure proper HTML structure
+      fullContent = this.cleanHTML(fullContent);
+      
       console.log('Streaming blog post completed');
     } catch (error) {
       console.error('Error in streaming blog generation:', error);
       throw error;
     }
+  }
+
+  /**
+   * Clean and validate HTML content
+   */
+  private cleanHTML(content: string): string {
+    // Remove markdown code block syntax
+    content = content.replace(/```html\s*/gi, '');
+    content = content.replace(/'''html\s*/gi, '');
+    content = content.replace(/```\s*$/gi, '');
+    content = content.replace(/'''\s*$/gi, '');
+    
+    // Ensure proper HTML structure
+    if (!content.trim().startsWith('<html')) {
+      content = `<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n</head>\n<body>\n${content}\n</body>\n</html>`;
+    }
+    
+    // Ensure proper closing tags
+    if (!content.trim().endsWith('</html>')) {
+      if (!content.includes('</body>')) {
+        content = content.replace('</html>', '</body>\n</html>');
+      }
+    }
+    
+    return content.trim();
   }
 
   /**
