@@ -42,7 +42,7 @@ export default function Home() {
             <div className="flex items-center space-x-3">
               <span className="text-sm text-slate-600">{user?.name} ({tenant?.name})</span>
               {hasExistingAudits && (
-                <Link href="/dashboard">
+                <Link href="/">
                   <Button
                     variant="outline"
                     size="sm"
