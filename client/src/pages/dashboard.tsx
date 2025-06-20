@@ -52,6 +52,34 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+  // Helper function to get SEO score styling based on score value
+  const getSEOScoreCardStyle = (score: number) => {
+    if (score >= 80) {
+      return {
+        background: "from-green-50 to-green-100",
+        border: "border-green-200",
+        textColor: "text-green-600"
+      };
+    } else if (score >= 60) {
+      return {
+        background: "from-yellow-50 to-yellow-100", 
+        border: "border-yellow-200",
+        textColor: "text-yellow-600"
+      };
+    } else if (score >= 40) {
+      return {
+        background: "from-orange-50 to-orange-100",
+        border: "border-orange-200", 
+        textColor: "text-orange-600"
+      };
+    } else {
+      return {
+        background: "from-red-50 to-red-100",
+        border: "border-red-200",
+        textColor: "text-red-600"
+      };
+    }
+  };
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
   const [showNewAuditForm, setShowNewAuditForm] = useState(false);
   const [isStartingAudit, setIsStartingAudit] = useState(false);
@@ -266,9 +294,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+          <Card className={`bg-gradient-to-r ${getSEOScoreCardStyle(metrics?.seoScore || 19).background} ${getSEOScoreCardStyle(metrics?.seoScore || 19).border}`}>
             <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">
+              <div className={`text-3xl font-bold mb-1 ${getSEOScoreCardStyle(metrics?.seoScore || 19).textColor}`}>
                 {metrics?.seoScore || 19}/100
               </div>
               <div className="text-sm text-gray-600">SEO Score</div>
