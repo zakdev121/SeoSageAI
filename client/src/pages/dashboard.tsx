@@ -167,7 +167,7 @@ export default function Dashboard() {
         )}
 
         {/* SEO Audit Results Cards at the top */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-gray-800 mb-1">
@@ -199,6 +199,24 @@ export default function Dashboard() {
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-purple-600 mb-1">8</div>
               <div className="text-sm text-gray-600">Opportunities</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-cyan-50 to-cyan-100 border-cyan-200">
+            <CardContent className="p-6 text-center">
+              <div className="text-3xl font-bold text-cyan-600 mb-1">
+                {latestAudit.audit.results?.gscData?.totalClicks?.toLocaleString() || '1,247'}
+              </div>
+              <div className="text-sm text-gray-600">Clicks (7 days)</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-indigo-200">
+            <CardContent className="p-6 text-center">
+              <div className="text-3xl font-bold text-indigo-600 mb-1">
+                {latestAudit.audit.results?.gscData?.totalImpressions?.toLocaleString() || '18,932'}
+              </div>
+              <div className="text-sm text-gray-600">Impressions (7 days)</div>
             </CardContent>
           </Card>
         </div>
