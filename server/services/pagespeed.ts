@@ -38,6 +38,8 @@ export class PageSpeedService {
 
     try {
       const cleanUrl = url.startsWith('http') ? url : `https://${url}`;
+      console.log('PageSpeed API - Making request to:', cleanUrl);
+      console.log('PageSpeed API - API Key present:', !!this.apiKey);
       
       const response = await axios.get(
         `https://www.googleapis.com/pagespeedonline/v5/runPagespeed`,
@@ -47,12 +49,14 @@ export class PageSpeedService {
             key: this.apiKey,
             category: 'PERFORMANCE',
             strategy: 'DESKTOP'
-          }
+          },
+          timeout: 30000 // 30 second timeout
         }
       );
 
+      console.log('PageSpeed API - Response status:', response.status);
       const data = response.data;
-      console.log('PageSpeed API response structure:', JSON.stringify(data, null, 2).substring(0, 500));
+      console.log('PageSpeed API response structure:', JSON.stringify(data, null, 2).substring(0, 1000));
       
       const lighthouseResult = data.lighthouseResult;
       

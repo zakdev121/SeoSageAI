@@ -971,7 +971,17 @@ async function processAudit(auditId: number, url: string, industry: string, emai
 
     // 4. Get PageSpeed Insights data
     console.log('Analyzing performance with PageSpeed Insights...');
+    console.log('PageSpeed API - URL being analyzed:', fullUrl);
     const pageSpeedData = await pageSpeedService.analyzePerformance(fullUrl);
+    console.log('PageSpeed API - Response received:', pageSpeedData ? 'Success' : 'Failed/Null');
+    if (pageSpeedData) {
+      console.log('PageSpeed scores:', {
+        performance: pageSpeedData.performanceScore,
+        accessibility: pageSpeedData.accessibilityScore,
+        bestPractices: pageSpeedData.bestPracticesScore,
+        seo: pageSpeedData.seoScore
+      });
+    }
     await storage.updateAuditProgress(auditId, 75);
 
     // 5. Analyze competitor landscape
