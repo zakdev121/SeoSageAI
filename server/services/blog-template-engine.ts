@@ -103,7 +103,7 @@ export class BlogTemplateEngine {
           "advanced_tips",
           "conclusion"
         ],
-        targetWordCount: 3000,
+        targetWordCount: 2000,
         seoOptimized: true,
         useCase: "educational, how-to, comprehensive coverage"
       },
@@ -119,7 +119,7 @@ export class BlogTemplateEngine {
           "actionable_insights",
           "conclusion"
         ],
-        targetWordCount: 2500,
+        targetWordCount: 2000,
         seoOptimized: true,
         useCase: "industry trends, market analysis, predictions"
       },
@@ -136,7 +136,7 @@ export class BlogTemplateEngine {
           "results_measurement",
           "conclusion"
         ],
-        targetWordCount: 2800,
+        targetWordCount: 2000,
         seoOptimized: true,
         useCase: "problem solving, business solutions, optimization"
       },
