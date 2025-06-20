@@ -63,7 +63,7 @@ For each issue, provide a JSON response with this structure:
         "overview": "Brief description of what needs to be done",
         "steps": ["Step 1", "Step 2", "Step 3"],
         "technicalDetails": "Specific technical implementation details",
-        "codeExample": "Code snippet or example if applicable",
+        "codeExample": "HTML/CSS code snippet, content template, or implementation example",
         "testingInstructions": "How to verify the fix worked"
       },
       "expectedOutcome": "What improvement this will bring",
@@ -74,6 +74,11 @@ For each issue, provide a JSON response with this structure:
 }
 
 Focus on practical, implementable solutions that will have the biggest SEO impact.
+
+For content-related issues (thin content, missing content), provide content templates or HTML structure examples.
+For technical issues (meta tags, schema), provide actual HTML/CSS code snippets.
+For internal linking issues, provide anchor text and link examples.
+Never use "NA" or "Not applicable" - always provide a relevant example or template.
 `;
 
     try {
@@ -94,10 +99,73 @@ Focus on practical, implementable solutions that will have the biggest SEO impac
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{"resolutions": []}');
-      return result.resolutions || [];
+      const resolutions = result.resolutions || [];
+      
+      // Ensure all resolutions have proper code examples
+      return resolutions.map((resolution: any) => ({
+        ...resolution,
+        actionPlan: {
+          ...resolution.actionPlan,
+          codeExample: this.ensureCodeExample(resolution.issueType, resolution.actionPlan?.codeExample)
+        }
+      }));
     } catch (error) {
       console.error('Error generating issue resolutions:', error);
       return [];
+    }
+  }
+
+  private ensureCodeExample(issueType: string, existingExample?: string): string {
+    if (existingExample && existingExample !== 'NA' && existingExample !== 'Not applicable') {
+      return existingExample;
+    }
+
+    // Provide fallback code examples based on issue type
+    switch (issueType?.toLowerCase()) {
+      case 'thin content':
+        return `<!-- Content expansion template -->
+<section class="content-expansion">
+  <h2>Key Benefits</h2>
+  <ul>
+    <li>Benefit 1 with detailed explanation</li>
+    <li>Benefit 2 with supporting details</li>
+    <li>Benefit 3 with real-world examples</li>
+  </ul>
+  
+  <h2>Frequently Asked Questions</h2>
+  <div class="faq-item">
+    <h3>Question 1?</h3>
+    <p>Detailed answer that adds value...</p>
+  </div>
+</section>`;
+
+      case 'missing meta description':
+        return `<meta name="description" content="Compelling 150-160 character description with primary keyword and call-to-action">`;
+
+      case 'missing title tag':
+        return `<title>Primary Keyword | Secondary Keyword | Brand Name</title>`;
+
+      case 'missing internal links':
+        return `<a href="/related-page" title="Descriptive anchor text">
+  Strategic internal link with keyword-rich anchor text
+</a>`;
+
+      case 'missing schema markup':
+        return `<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Company Name",
+  "url": "https://example.com"
+}
+</script>`;
+
+      default:
+        return `<!-- Implementation example -->
+<div class="seo-improvement">
+  <!-- Add relevant HTML structure or content template here -->
+  <p>Implementation steps and code examples...</p>
+</div>`;
     }
   }
 
