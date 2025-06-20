@@ -573,6 +573,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Write a custom blog post with SEO optimization
+  app.post("/api/audits/:id/write-custom-blog", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const { topic, industry } = req.body;
+      
+      if (!topic || !industry) {
+        return res.status(400).json({ error: 'Topic and industry are required' });
+      }
+
+      const audit = await storage.getAudit(auditId);
+      
+      if (!audit) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      // Create a custom blog topic with SEO optimization
+      const customTopic = {
+        title: topic,
+        targetKeyword: topic.toLowerCase().split(' ').slice(0, 3).join(' '),
+        metaDescription: `Comprehensive guide about ${topic} in the ${industry} industry. Learn best practices, strategies, and actionable insights.`,
+        seoKeywords: [
+          topic.toLowerCase(),
+          `${topic.toLowerCase()} guide`,
+          `${industry.toLowerCase()} ${topic.toLowerCase()}`,
+          `${topic.toLowerCase()} best practices`,
+          `${industry.toLowerCase()} trends`
+        ],
+        contentType: 'guide',
+        contentAngle: `Expert insights and practical strategies for ${industry} professionals`,
+        targetAudience: `${industry} professionals and business leaders`,
+        industry: industry
+      };
+
+      const blogWriter = new BlogWriterService();
+      
+      // Use audit results if available, otherwise create basic structure
+      const auditResults = audit.results || {
+        url: audit.url,
+        industry: industry,
+        analyzedAt: new Date().toISOString(),
+        issues: [],
+        stats: { seoScore: 0 },
+        pages: [],
+        gscData: null,
+        keywordOpportunities: [],
+        aiRecommendations: [],
+        pageSpeedData: null,
+        competitorData: null,
+        keywordLandscape: null
+      };
+      
+      const blogPost = await blogWriter.writeBlogPost(customTopic, auditResults);
+      
+      res.json({ blogPost });
+    } catch (error: any) {
+      console.error('Error writing custom blog post:', error);
+      res.status(500).json({ error: 'Failed to write custom blog post' });
+    }
+  });
+
   // Generate content calendar
   app.post("/api/audits/:id/content-calendar", async (req, res) => {
     try {

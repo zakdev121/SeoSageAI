@@ -609,20 +609,126 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Blog Post Display */}
-      {generatedBlogPost && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Generated Blog Post</CardTitle>
-            <CardDescription>
-              Your AI-written blog post is ready! Copy and paste into your CMS.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BlogPostDisplay blogPost={generatedBlogPost} />
-          </CardContent>
-        </Card>
-      )}
+      {/* Enhanced Blog Post Display with Real-time Writing */}
+      <div ref={blogSectionRef}>
+        {(isWritingBlog || generatedBlogPost || blogContent) && (
+          <Card className="border-2 border-blue-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    {isWritingBlog ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                        AI is Writing Your Blog Post...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-5 w-5 text-green-600" />
+                        Generated Blog Post
+                      </>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {isWritingBlog 
+                      ? "Watch as AI writes your SEO-optimized content in real-time"
+                      : "Your AI-written blog post is ready! Edit, regenerate, or copy the content."
+                    }
+                  </CardDescription>
+                </div>
+                
+                {!isWritingBlog && generatedBlogPost && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => setIsEditingBlog(!isEditingBlog)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      {isEditingBlog ? 'View' : 'Edit'}
+                    </Button>
+                    <Button
+                      onClick={handleRegenerateBlog}
+                      variant="outline"
+                      size="sm"
+                      disabled={writeBlogMutation.isPending}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Regenerate
+                    </Button>
+                    <Button
+                      onClick={handleCopyBlog}
+                      size="sm"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isWritingBlog ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg min-h-[400px] border">
+                    <div className="prose max-w-none">
+                      <div 
+                        className="whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: blogContent }}
+                      />
+                      <span className="animate-pulse">|</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Writing in progress... This may take a few moments.
+                  </div>
+                </div>
+              ) : generatedBlogPost ? (
+                <div className="space-y-4">
+                  {/* Blog Post Meta Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
+                    <div>
+                      <h4 className="font-semibold text-sm text-gray-700">Title</h4>
+                      <p className="text-sm">{generatedBlogPost.title}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm text-gray-700">Word Count</h4>
+                      <p className="text-sm">{generatedBlogPost.content?.length || 0} characters</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm text-gray-700">Meta Description</h4>
+                      <p className="text-sm">{generatedBlogPost.metaDescription}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Blog Content */}
+                  <div className="border rounded-lg">
+                    {isEditingBlog ? (
+                      <Textarea
+                        value={generatedBlogPost.content || ''}
+                        onChange={(e) => setGeneratedBlogPost({
+                          ...generatedBlogPost,
+                          content: e.target.value
+                        })}
+                        className="min-h-[500px] border-0 resize-none"
+                        placeholder="Edit your blog content here..."
+                      />
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg max-h-[500px] overflow-y-auto">
+                        <div 
+                          className="prose max-w-none"
+                          dangerouslySetInnerHTML={{ __html: generatedBlogPost.content || '' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
