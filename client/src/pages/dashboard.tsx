@@ -152,6 +152,13 @@ export default function Dashboard() {
 
   const latestAudit = dashboardData[0];
   const metrics = latestAudit.metrics;
+  
+  // Debug logging
+  console.log('Dashboard Latest Audit:', { 
+    id: latestAudit.audit.id, 
+    status: latestAudit.audit.status,
+    hasResults: !!latestAudit.audit.results 
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -128,10 +128,29 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
   });
 
   // Debug logging
-  console.log('ResultsSection:', { isLoading, audit, auditStatus: audit?.status, hasResults: !!audit?.results });
+  console.log('ResultsSection:', { isLoading, hasResults: !!audit?.results });
   
-  if (isLoading || !audit || audit.status !== 'completed' || !audit.results) {
-    return null;
+  if (isLoading || !audit) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading audit results...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (audit.status !== 'completed' || !audit.results) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Audit in progress...</p>
+          <p className="text-sm text-gray-500 mt-2">Progress: {audit.progress}%</p>
+        </div>
+      </div>
+    );
   }
 
   const results = audit.results as AuditResultsType;
