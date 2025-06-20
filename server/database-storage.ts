@@ -134,9 +134,9 @@ export class DatabaseStorage implements IStorage {
     const issueRecords = issues.map(issue => ({
       auditId,
       issueType: issue.type,
-      pageUrl: issue.page,
-      description: issue.description,
-      severity: issue.severity.toLowerCase() as 'high' | 'medium' | 'low',
+      pageUrl: issue.page || '',
+      description: issue.message || issue.type,
+      severity: issue.severity === 'critical' ? 'high' : issue.severity.toLowerCase() as 'high' | 'medium' | 'low',
       status: 'active' as const,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -272,8 +272,9 @@ export class DatabaseStorage implements IStorage {
     const publishedBlogs = blogs.filter(b => b.status === 'published').length;
     const draftBlogs = blogs.filter(b => b.status === 'draft').length;
 
-    // Extract SEO score from audit results
-    const seoScore = audit?.results?.stats?.seoScore || 0;
+    // Extract SEO score from audit results with proper type checking
+    const auditResults = audit?.results as any;
+    const seoScore = auditResults?.stats?.seoScore || 0;
 
     const metrics = {
       auditId,
