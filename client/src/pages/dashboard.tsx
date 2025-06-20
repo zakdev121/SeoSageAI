@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,17 @@ export default function Dashboard() {
     staleTime: 0, // Always consider data stale to force fresh fetches
     gcTime: 0, // Don't cache to ensure we get latest audit data
   });
+
+  // Force cache invalidation when dashboard data changes
+  useEffect(() => {
+    if (dashboardData?.[0]?.audit?.id) {
+      const latestAuditId = dashboardData[0].audit.id;
+      // Invalidate all audit-related queries to force fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/audits"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/audits/${latestAuditId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/audits/${latestAuditId}/fixed-issues`] });
+    }
+  }, [dashboardData?.[0]?.audit?.id]);
 
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
