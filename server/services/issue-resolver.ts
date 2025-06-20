@@ -55,7 +55,6 @@ For each issue, provide a JSON response with this structure:
   "resolutions": [
     {
       "issueType": "string",
-      "pageUrl": "the specific webpage URL where this issue occurs",
       "priority": "high|medium|low",
       "timeToComplete": "string (e.g., '2 hours', '1 day')",
       "difficulty": "easy|medium|hard",
@@ -102,18 +101,14 @@ Never use "NA" or "Not applicable" - always provide a relevant example or templa
       const result = JSON.parse(response.choices[0].message.content || '{"resolutions": []}');
       const resolutions = result.resolutions || [];
       
-      // Ensure all resolutions have proper code examples and page URLs
-      return resolutions.map((resolution: any, index: number) => {
-        const matchingIssue = issues[index];
-        return {
-          ...resolution,
-          pageUrl: matchingIssue?.page || resolution.pageUrl || auditResults.url,
-          actionPlan: {
-            ...resolution.actionPlan,
-            codeExample: this.ensureCodeExample(resolution.issueType, resolution.actionPlan?.codeExample)
-          }
-        };
-      });
+      // Ensure all resolutions have proper code examples
+      return resolutions.map((resolution: any) => ({
+        ...resolution,
+        actionPlan: {
+          ...resolution.actionPlan,
+          codeExample: this.ensureCodeExample(resolution.issueType, resolution.actionPlan?.codeExample)
+        }
+      }));
     } catch (error) {
       console.error('Error generating issue resolutions:', error);
       return [];
@@ -192,7 +187,6 @@ Provide quick win recommendations as JSON:
   "resolutions": [
     {
       "issueType": "Quick Win - [Category]",
-      "pageUrl": "specific page URL where this optimization applies",
       "priority": "high",
       "timeToComplete": "30 minutes - 2 hours",
       "difficulty": "easy",
@@ -238,13 +232,7 @@ Focus on:
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{"resolutions": []}');
-      const resolutions = result.resolutions || [];
-      
-      // Ensure all quick wins have page URLs
-      return resolutions.map((resolution: any) => ({
-        ...resolution,
-        pageUrl: resolution.pageUrl || auditResults.url
-      }));
+      return result.resolutions || [];
     } catch (error) {
       console.error('Error generating quick wins:', error);
       return [];

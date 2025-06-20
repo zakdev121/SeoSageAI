@@ -337,7 +337,7 @@ export class SEOEngine {
     const newMetaDescription = response.choices[0].message.content || '';
     const postId = this.extractPostIdFromUrl(pageUrl);
     
-    return await wpService.updatePostMetaDescription(postId, newMetaDescription);
+    return await wpService.updateMetaDescription(postId, newMetaDescription);
   }
 
   private async fixThinContent(wpService: any, pageUrl: string): Promise<any> {

@@ -913,20 +913,6 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
             <div>
               <h4 className="font-semibold">{resolution.issueType}</h4>
               <p className="text-sm text-gray-600">{resolution.actionPlan?.overview}</p>
-              {resolution.pageUrl && (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-blue-600 font-medium">Affected Page:</span>
-                  <a 
-                    href={resolution.pageUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 underline truncate max-w-md"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {resolution.pageUrl}
-                  </a>
-                </div>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
