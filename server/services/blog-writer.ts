@@ -204,7 +204,7 @@ Make the content authoritative, engaging, and optimized for search engines while
         ],
         response_format: { type: "json_object" },
         temperature: 0.3,
-        max_tokens: 4000
+        max_tokens: 16000
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{"post": {}}');
