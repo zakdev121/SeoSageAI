@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, FileText, Globe, ArrowLeft } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, FileText, Globe, ArrowLeft, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { ResultsSection } from "@/components/results-section";
+import { AuditForm } from "@/components/audit-form";
 
 interface DashboardData {
   audit: {
@@ -48,10 +50,22 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+  const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
+  const [showNewAuditForm, setShowNewAuditForm] = useState(false);
+  
   const { data: dashboardData, isLoading, error } = useQuery<DashboardData[]>({
     queryKey: ["/api/dashboard"],
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
   });
+
+  const handleAuditStart = (auditId: number) => {
+    setCurrentAuditId(auditId);
+    setShowNewAuditForm(false); // Hide form after starting audit
+  };
+
+  const handleNewAuditClick = () => {
+    setShowNewAuditForm(true);
+  };
 
   if (isLoading) {
     return (
@@ -109,6 +123,14 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <Button
+                onClick={handleNewAuditClick}
+                size="sm"
+                className="flex items-center space-x-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Audit</span>
+              </Button>
               <Link href="/">
                 <Button
                   variant="outline"
@@ -125,6 +147,20 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Audit Form for new audits - only show when requested */}
+        {showNewAuditForm && (
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Start New SEO Audit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AuditForm onAuditStart={handleAuditStart} />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* KPI Cards at the top */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
