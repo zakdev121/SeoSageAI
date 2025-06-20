@@ -20,17 +20,14 @@ export class TrendResearchService {
    * Research current trends from multiple online sources
    */
   async researchTrends(industry: string, keywords: string[]): Promise<TrendInsight[]> {
-    // Parse multiple industries from comma-separated string
-    const industries = industry.split(',').map(i => i.trim()).filter(i => i.length > 0);
-    const industryText = industries.length > 1 ? industries.join(' and ') : industry;
-    console.log(`Researching trends for: ${industryText}`);
+    console.log(`Researching trends for: ${industry}`);
     
     const sources = [
-      this.searchYCombinator(industryText),
-      this.searchTwitterTrends(industryText, keywords),
-      this.searchRedditTrends(industryText, keywords),
-      this.searchProductHunt(industryText),
-      this.searchStackOverflow(industryText, keywords)
+      this.searchYCombinator(industry),
+      this.searchTwitterTrends(industry, keywords),
+      this.searchRedditTrends(industry, keywords),
+      this.searchProductHunt(industry),
+      this.searchStackOverflow(industry, keywords)
     ];
 
     const results = await Promise.allSettled(sources);
@@ -43,27 +40,13 @@ export class TrendResearchService {
     }
 
     // Use GPT to analyze and prioritize trends
-    return await this.analyzeTrendsWithGPT(allTrends, industries.join(', '));
-  }
-
-  /**
-   * Parse industry input to handle multiple formats
-   */
-  private parseIndustries(industryInput: string): string[] {
-    if (!industryInput) return ['general'];
-    
-    // Handle comma-separated industries
-    const industries = industryInput.split(',')
-      .map(industry => industry.trim())
-      .filter(industry => industry.length > 0);
-    
-    return industries.length > 0 ? industries : ['general'];
+    return await this.analyzeTrendsWithGPT(allTrends, industry);
   }
 
   /**
    * Search Y Combinator for startup trends and news
    */
-  private async searchYCombinator(industries: string[]): Promise<TrendInsight[]> {
+  private async searchYCombinator(industry: string): Promise<TrendInsight[]> {
     try {
       const searchTerms = this.getIndustrySearchTerms(industry);
       const trends: TrendInsight[] = [];
@@ -341,7 +324,13 @@ Return as JSON: {"prioritizedTrends": [{"topic": "...", "description": "...", "t
     }
 
     // Remove duplicates and return
-    return [...new Set(allTerms)];
+    const uniqueTerms: string[] = [];
+    for (const term of allTerms) {
+      if (!uniqueTerms.includes(term)) {
+        uniqueTerms.push(term);
+      }
+    }
+    return uniqueTerms;
   }
 
   /**
