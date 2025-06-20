@@ -160,7 +160,12 @@ export class CustomSearchService {
       }
     );
 
-    return response.data.items || [];
+    return response.data.items?.map((item: any) => ({
+      title: item.title,
+      link: item.link,
+      snippet: item.snippet,
+      displayLink: item.displayLink
+    })) || [];
   }
 
   private estimateSearchVolume(resultCount: number): 'high' | 'medium' | 'low' {
@@ -202,13 +207,6 @@ export class CustomSearchService {
           '"boutique marketing" firm',
           '"marketing automation" consulting',
           '"SEO agency" mid-market'
-        );
-      }
-      
-      if (cleanIndustry.includes('service') || cleanIndustry.includes('consulting')) {
-        queries.push(
-          '"professional services" boutique',
-          '"business consulting" specialized'
         );
       }
     }
