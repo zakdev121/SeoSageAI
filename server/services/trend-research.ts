@@ -19,17 +19,18 @@ export class TrendResearchService {
   /**
    * Research current trends from multiple online sources
    */
-  async researchTrends(industryInput: string, keywords: string[]): Promise<TrendInsight[]> {
-    // Parse industries - handle single industry, comma-separated, or array format
-    const industries = this.parseIndustries(industryInput);
-    console.log(`Researching trends for industries: ${industries.join(', ')}`);
+  async researchTrends(industry: string, keywords: string[]): Promise<TrendInsight[]> {
+    // Parse multiple industries from comma-separated string
+    const industries = industry.split(',').map(i => i.trim()).filter(i => i.length > 0);
+    const industryText = industries.length > 1 ? industries.join(' and ') : industry;
+    console.log(`Researching trends for: ${industryText}`);
     
     const sources = [
-      this.searchYCombinator(industries),
-      this.searchTwitterTrends(industries, keywords),
-      this.searchRedditTrends(industries, keywords),
-      this.searchProductHunt(industries),
-      this.searchStackOverflow(industries, keywords)
+      this.searchYCombinator(industryText),
+      this.searchTwitterTrends(industryText, keywords),
+      this.searchRedditTrends(industryText, keywords),
+      this.searchProductHunt(industryText),
+      this.searchStackOverflow(industryText, keywords)
     ];
 
     const results = await Promise.allSettled(sources);
@@ -314,23 +315,33 @@ Return as JSON: {"prioritizedTrends": [{"topic": "...", "description": "...", "t
   }
 
   /**
-   * Get industry-specific search terms
+   * Get industry-specific search terms - handles comma-separated industries
    */
-  private getIndustrySearchTerms(industry: string): string[] {
+  private getIndustrySearchTerms(industryInput: string): string[] {
     const terms: Record<string, string[]> = {
       'tech': ['AI', 'machine learning', 'startup', 'SaaS', 'automation', 'blockchain', 'web3'],
       'marketing': ['digital marketing', 'SEO', 'content marketing', 'social media', 'analytics'],
       'finance': ['fintech', 'cryptocurrency', 'banking', 'investment', 'trading'],
       'healthcare': ['healthtech', 'telemedicine', 'medical devices', 'biotech'],
       'ecommerce': ['online retail', 'marketplace', 'dropshipping', 'fulfillment'],
+      'service': ['consulting', 'professional services', 'business solutions', 'client management'],
       'default': ['technology', 'innovation', 'business', 'growth', 'strategy']
     };
 
-    const industryKey = Object.keys(terms).find(key => 
-      industry.toLowerCase().includes(key)
-    ) || 'default';
+    // Parse multiple industries from comma-separated string
+    const industries = industryInput.split(',').map(i => i.trim().toLowerCase());
+    const allTerms: string[] = [];
 
-    return terms[industryKey];
+    for (const industry of industries) {
+      const industryKey = Object.keys(terms).find(key => 
+        industry.includes(key)
+      ) || 'default';
+      
+      allTerms.push(...terms[industryKey]);
+    }
+
+    // Remove duplicates and return
+    return [...new Set(allTerms)];
   }
 
   /**
