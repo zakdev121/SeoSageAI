@@ -19,15 +19,17 @@ export class TrendResearchService {
   /**
    * Research current trends from multiple online sources
    */
-  async researchTrends(industry: string, keywords: string[]): Promise<TrendInsight[]> {
-    console.log(`Researching trends for industry: ${industry}`);
+  async researchTrends(industryInput: string, keywords: string[]): Promise<TrendInsight[]> {
+    // Parse industries - handle single industry, comma-separated, or array format
+    const industries = this.parseIndustries(industryInput);
+    console.log(`Researching trends for industries: ${industries.join(', ')}`);
     
     const sources = [
-      this.searchYCombinator(industry),
-      this.searchTwitterTrends(industry, keywords),
-      this.searchRedditTrends(industry, keywords),
-      this.searchProductHunt(industry),
-      this.searchStackOverflow(industry, keywords)
+      this.searchYCombinator(industries),
+      this.searchTwitterTrends(industries, keywords),
+      this.searchRedditTrends(industries, keywords),
+      this.searchProductHunt(industries),
+      this.searchStackOverflow(industries, keywords)
     ];
 
     const results = await Promise.allSettled(sources);
@@ -40,13 +42,27 @@ export class TrendResearchService {
     }
 
     // Use GPT to analyze and prioritize trends
-    return await this.analyzeTrendsWithGPT(allTrends, industry);
+    return await this.analyzeTrendsWithGPT(allTrends, industries.join(', '));
+  }
+
+  /**
+   * Parse industry input to handle multiple formats
+   */
+  private parseIndustries(industryInput: string): string[] {
+    if (!industryInput) return ['general'];
+    
+    // Handle comma-separated industries
+    const industries = industryInput.split(',')
+      .map(industry => industry.trim())
+      .filter(industry => industry.length > 0);
+    
+    return industries.length > 0 ? industries : ['general'];
   }
 
   /**
    * Search Y Combinator for startup trends and news
    */
-  private async searchYCombinator(industry: string): Promise<TrendInsight[]> {
+  private async searchYCombinator(industries: string[]): Promise<TrendInsight[]> {
     try {
       const searchTerms = this.getIndustrySearchTerms(industry);
       const trends: TrendInsight[] = [];
