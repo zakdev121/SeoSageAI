@@ -56,77 +56,79 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto mb-8">
-      <CardHeader className="text-center">
-        <CardTitle className="flex items-center justify-center gap-2">
-          <Brain className="h-6 w-6 text-blue-600" />
-          AI SEO Audit for Synviz
-        </CardTitle>
-        <CardDescription>
-          Comprehensive AI-powered SEO analysis and issue resolution for synviz.com
-        </CardDescription>
+    <Card className="w-full max-w-6xl mx-auto mb-8">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="h-6 w-6 text-blue-600" />
+            <div>
+              <CardTitle className="text-lg">AI SEO Audit for Synviz</CardTitle>
+              <CardDescription className="text-sm">
+                Comprehensive AI-powered SEO analysis and issue resolution for synviz.com
+              </CardDescription>
+            </div>
+          </div>
+          <Button 
+            onClick={handleStartAudit}
+            disabled={isSubmitting || createAuditMutation.isPending}
+            size="lg"
+            className="min-w-[180px]"
+          >
+            {isSubmitting || createAuditMutation.isPending ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Running AI Audit...
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4 mr-2" />
+                Start AI SEO Audit
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Website Info */}
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold">Website</span>
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Website Info */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold text-sm">Website</span>
+            </div>
+            <p className="text-sm font-mono text-blue-700">synviz.com</p>
           </div>
-          <p className="text-lg font-mono">synviz.com</p>
-        </div>
 
-        {/* Industries Coverage */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold">Multi-Industry Analysis</span>
+          {/* Industries Coverage */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold text-sm">Multi-Industry Analysis</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {AVAILABLE_INDUSTRIES.map((industry) => (
+                <Badge key={industry.id} variant="secondary" className="text-xs px-2 py-1">
+                  {industry.name}
+                </Badge>
+              ))}
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mb-3">
-            Analyzing synviz.com across all relevant industry contexts:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {AVAILABLE_INDUSTRIES.map((industry) => (
-              <Badge key={industry.id} variant="secondary" className="text-xs">
-                {industry.name}
-              </Badge>
-            ))}
+
+          {/* Audit Features */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span className="font-semibold text-sm">What You'll Get</span>
+            </div>
+            <ul className="text-xs space-y-1 text-gray-600">
+              <li>• Complete SEO health analysis</li>
+              <li>• AI-powered issue resolutions</li>
+              <li>• Custom blog strategy & content</li>
+              <li>• GSC performance insights</li>
+              <li>• Professional PDF report</li>
+            </ul>
           </div>
         </div>
-
-        {/* Audit Features */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold mb-2 flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            What You'll Get
-          </h4>
-          <ul className="text-sm space-y-1 text-gray-600">
-            <li>• Complete SEO health analysis</li>
-            <li>• AI-powered issue resolutions with step-by-step fixes</li>
-            <li>• Custom blog strategy and content generation</li>
-            <li>• Google Search Console performance insights</li>
-            <li>• Professional PDF report</li>
-          </ul>
-        </div>
-
-        <Button 
-          onClick={handleStartAudit}
-          className="w-full" 
-          disabled={isSubmitting || createAuditMutation.isPending}
-          size="lg"
-        >
-          {isSubmitting || createAuditMutation.isPending ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Running AI Audit...
-            </>
-          ) : (
-            <>
-              <Brain className="h-4 w-4 mr-2" />
-              Start AI SEO Audit
-            </>
-          )}
-        </Button>
       </CardContent>
     </Card>
   );
