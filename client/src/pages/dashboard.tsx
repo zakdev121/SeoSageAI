@@ -65,8 +65,18 @@ export default function Dashboard() {
     setCurrentAuditId(auditId);
     setShowNewAuditForm(false); // Hide form after starting audit
     setIsStartingAudit(true);
-    // The dashboard will automatically refresh and show the new audit progress
-    setTimeout(() => setIsStartingAudit(false), 3000);
+    // Keep loading state until we see the new audit processing
+    const checkAuditStatus = setInterval(() => {
+      if (latestAudit && latestAudit.audit.id === auditId && latestAudit.audit.status === 'processing') {
+        setIsStartingAudit(false);
+        clearInterval(checkAuditStatus);
+      }
+    }, 1000);
+    // Fallback timeout
+    setTimeout(() => {
+      setIsStartingAudit(false);
+      clearInterval(checkAuditStatus);
+    }, 10000);
   };
 
   const handleNewAuditClick = () => {
@@ -179,7 +189,7 @@ export default function Dashboard() {
         )}
 
         {/* Immediate Loading State when starting audit */}
-        {isStartingAudit && (
+        {(isStartingAudit || (currentAuditId && latestAudit && latestAudit.audit.id !== currentAuditId)) && (
           <div className="mb-8">
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
               <CardContent className="p-6">
@@ -192,7 +202,7 @@ export default function Dashboard() {
                     Setting up comprehensive analysis for synviz.com
                   </p>
                 </div>
-                <Progress value={10} className="w-full" />
+                <Progress value={15} className="w-full" />
               </CardContent>
             </Card>
           </div>
