@@ -244,7 +244,7 @@ export default function Dashboard() {
                       <div className="text-xs mt-1">{latestAudit.audit.progress >= 75 ? 'Complete' : 'Pending'}</div>
                     </div>
                     <div className={`text-center p-3 rounded-lg ${latestAudit.audit.progress >= 100 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                      <div className="text-sm font-medium">Analysis</div>
+                      <div className="text-sm font-medium">AI Analysis</div>
                       <div className="text-xs mt-1">{latestAudit.audit.progress >= 100 ? 'Complete' : 'Pending'}</div>
                     </div>
                   </div>
