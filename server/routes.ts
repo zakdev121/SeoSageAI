@@ -22,8 +22,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { hostname, subdomain } = req.body;
       
-      // Default to synviz for main domain
-      if (hostname.includes('synviz') || subdomain === 'synviz' || hostname.includes('localhost')) {
+      // Default to synviz for main domain or localhost
+      if (hostname.includes('synviz') || subdomain === 'synviz' || hostname.includes('localhost') || hostname === 'localhost') {
         return res.json({
           tenantId: 'synviz',
           name: 'Synviz',
