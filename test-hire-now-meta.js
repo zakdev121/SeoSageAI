@@ -19,7 +19,7 @@ async function testHireNowMetaUpdate() {
   }
 
   const authHeaders = {
-    'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+    'Authorization': `Basic ${Buffer.from(`SEO_Audit_tool:${password}`).toString('base64')}`,
     'Content-Type': 'application/json'
   };
 
@@ -51,9 +51,8 @@ async function testHireNowMetaUpdate() {
       const metaDescription = "Hire top-tier developers and IT professionals. Get access to skilled talent for your software projects with our comprehensive staffing solutions and technical expertise.";
       
       const synvizResponse = await axios.post(`${baseUrl}/synviz/v1/update-meta`, {
-        post_id: parseInt(pageId),
-        meta_description: metaDescription,
-        force_update: true
+        post_id: pageId,
+        meta_description: metaDescription
       }, {
         headers: authHeaders,
         timeout: 10000
