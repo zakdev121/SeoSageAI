@@ -3,9 +3,13 @@ import { AuditForm } from "@/components/audit-form";
 import { LoadingState } from "@/components/loading-state";
 import { ResultsSection } from "@/components/results-section";
 import { ToastNotifications } from "@/components/toast-notifications";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut } from "lucide-react";
 
 export default function Home() {
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
+  const { user, tenant, logout } = useAuth();
 
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
@@ -27,10 +31,16 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <span className="text-sm text-slate-600">Marketing Team</span>
-              <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                <i className="fas fa-user text-slate-600 text-xs"></i>
-              </div>
+              <span className="text-sm text-slate-600">{user?.name} ({tenant?.name})</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="flex items-center space-x-1"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </Button>
             </div>
           </div>
         </div>
