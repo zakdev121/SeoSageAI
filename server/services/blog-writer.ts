@@ -150,7 +150,7 @@ Respond with JSON:
     "title": "SEO-optimized title (55-60 characters) with target keyword",
     "metaDescription": "Compelling meta description (150-160 characters) that drives clicks",
     "slug": "seo-friendly-url-slug-with-target-keyword",
-    "content": "WRITE THE COMPLETE FULL-LENGTH ARTICLE (1,500-3,000 words). Do NOT provide a summary or abbreviated version. Write every single paragraph in full detail with proper HTML formatting including <h2>, <h3>, <p>, <ul>, <ol>, <strong>, <em> tags. Each section should be 300-500 words minimum. Include comprehensive explanations, multiple examples, case studies, statistics, and actionable insights throughout every section.",
+    "content": "WRITE THE COMPLETE FULL-LENGTH ARTICLE (1,500-3,000 words). Do NOT provide a summary or abbreviated version. Write every single paragraph in full detail with proper HTML formatting including <h2>, <h3>, <p>, <ul>, <ol>, <strong>, <em> tags. Each section should be 300-500 words minimum. Include comprehensive explanations, multiple examples, case studies, statistics, and actionable insights throughout every section. Make it visually appealing with: compelling introduction and strong call-to-action at the end, bullet points, headings, subheadings, callout quotes, and placeholder image tags. Return in HTML format.",
     "headings": {
       "h1": "Main H1 title with target keyword",
       "h2": ["List of 6-8 H2 section headings with semantic keywords"],
