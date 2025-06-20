@@ -54,6 +54,7 @@ interface DashboardData {
 export default function Dashboard() {
   const [currentAuditId, setCurrentAuditId] = useState<number | null>(null);
   const [showNewAuditForm, setShowNewAuditForm] = useState(false);
+  const [isStartingAudit, setIsStartingAudit] = useState(false);
   
   const { data: dashboardData, isLoading, error } = useQuery<DashboardData[]>({
     queryKey: ["/api/dashboard"],
@@ -63,6 +64,9 @@ export default function Dashboard() {
   const handleAuditStart = (auditId: number) => {
     setCurrentAuditId(auditId);
     setShowNewAuditForm(false); // Hide form after starting audit
+    setIsStartingAudit(true);
+    // The dashboard will automatically refresh and show the new audit progress
+    setTimeout(() => setIsStartingAudit(false), 3000);
   };
 
   const handleNewAuditClick = () => {
@@ -174,8 +178,28 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Immediate Loading State when starting audit */}
+        {isStartingAudit && (
+          <div className="mb-8">
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="text-center mb-4">
+                  <div className="flex items-center justify-center space-x-2 mb-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <h3 className="text-lg font-semibold text-slate-900">Initializing SEO Audit</h3>
+                  </div>
+                  <p className="text-slate-600 mb-4">
+                    Setting up comprehensive analysis for synviz.com
+                  </p>
+                </div>
+                <Progress value={10} className="w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Audit Progress Loader */}
-        {latestAudit.audit.status === 'processing' && (
+        {!isStartingAudit && latestAudit.audit.status === 'processing' && (
           <div className="mb-8">
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
               <CardContent className="p-6">

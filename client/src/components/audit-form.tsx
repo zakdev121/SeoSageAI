@@ -24,6 +24,7 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
 
   const createAuditMutation = useMutation({
     mutationFn: async () => {
+      setIsSubmitting(true);
       const allIndustries = AVAILABLE_INDUSTRIES.map(ind => ind.name).join(", ");
       const response = await apiRequest("POST", "/api/audits", {
         url: "synviz.com",
@@ -31,13 +32,21 @@ export function AuditForm({ onAuditStart }: AuditFormProps) {
       });
       return response.json();
     },
+    onMutate: () => {
+      // Show immediate feedback
+      setIsSubmitting(true);
+      toast({
+        title: "Starting Audit...",
+        description: "Initializing SEO analysis for synviz.com",
+      });
+    },
     onSuccess: (data) => {
       toast({
         title: "AI Audit Started",
         description: "Running comprehensive SEO analysis for synviz.com",
       });
       onAuditStart(data.auditId);
-      setIsSubmitting(false);
+      // Keep submitting state until audit actually starts processing
     },
     onError: (error) => {
       toast({
