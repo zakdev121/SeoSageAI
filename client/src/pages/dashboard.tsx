@@ -86,7 +86,9 @@ export default function Dashboard() {
   
   const { data: dashboardData, isLoading, error } = useQuery<DashboardData[]>({
     queryKey: ["/api/dashboard"],
-    refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    staleTime: 0, // Always consider data stale to force fresh fetches
+    cacheTime: 0, // Don't cache to ensure we get latest audit data
   });
 
   const handleAuditStart = (auditId: number) => {
