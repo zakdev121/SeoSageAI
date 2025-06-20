@@ -447,7 +447,7 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
             </TabsContent>
 
             <TabsContent value="performance" className="space-y-6">
-              {results.pageSpeedData ? (
+              {results.pageSpeedData && Object.keys(results.pageSpeedData).length > 0 ? (
                 <div className="space-y-6">
                   {/* Performance Scores */}
                   <div>
