@@ -166,7 +166,7 @@ export default function Dashboard() {
         )}
 
         {/* SEO Audit Results Cards at the top */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-gray-800 mb-1">
@@ -182,7 +182,6 @@ export default function Dashboard() {
                 {metrics?.seoScore || 19}
               </div>
               <div className="text-sm text-gray-600">SEO Score</div>
-              <div className="text-xs text-gray-500 mt-1">0</div>
             </CardContent>
           </Card>
 
@@ -192,7 +191,6 @@ export default function Dashboard() {
                 {metrics?.totalIssues || 79}
               </div>
               <div className="text-sm text-gray-600">Issues Found</div>
-              <div className="text-xs text-gray-500 mt-1">0</div>
             </CardContent>
           </Card>
 
@@ -200,6 +198,70 @@ export default function Dashboard() {
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-purple-600 mb-1">8</div>
               <div className="text-sm text-gray-600">Opportunities</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">SEO Score</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {metrics?.seoScore || 0}/100
+              </div>
+              <Progress value={metrics?.seoScore || 0} className="mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.totalIssues || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {metrics?.activeIssues || 0} active, {metrics?.fixedIssues || 0} fixed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Blog Posts</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.publishedBlogs || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {metrics?.draftBlogs || 0} drafts
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Status</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2">
+                <Badge 
+                  variant={latestAudit.audit.status === 'completed' ? 'default' : 'secondary'}
+                >
+                  {latestAudit.audit.status}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {latestAudit.audit.completedAt 
+                  ? `Completed ${new Date(latestAudit.audit.completedAt).toLocaleDateString()}`
+                  : 'In progress'
+                }
+              </p>
             </CardContent>
           </Card>
         </div>
