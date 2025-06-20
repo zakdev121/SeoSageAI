@@ -192,8 +192,7 @@ export default function Dashboard() {
         {/* Full Results Section - Same as main page */}
         <div className="max-w-4xl mx-auto">
           <ResultsSection 
-            audit={latestAudit.audit}
-            isLoading={false}
+            auditId={latestAudit.audit.id}
           />
         </div>
       </main>
