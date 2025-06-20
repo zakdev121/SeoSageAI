@@ -551,9 +551,16 @@ export interface BlogTopic {
   targetKeyword: string;
   metaDescription: string;
   seoKeywords: string[];
-  contentType?: string;
-  contentAngle?: string;
-  targetAudience?: string;
+  contentType: string;
+  contentAngle: string;
+  targetAudience: string;
+  secondaryKeywords?: string[];
+  searchVolume?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  wordCount?: string;
+  outline?: string[];
+  seoGoal?: string;
+  estimatedRankingPotential?: string;
 }
 
 export interface BlogPost {

@@ -103,13 +103,19 @@ Return as JSON: {
         title: this.createTitleFromKeyword(q.query),
         targetKeyword: q.query,
         metaDescription: `Comprehensive guide to ${q.query} - expert insights and best practices`,
-        contentType: 'guide' as const
+        seoKeywords: [q.query, `${q.query} guide`, `${q.query} tips`, `${q.query} best practices`],
+        contentType: 'guide',
+        contentAngle: 'Comprehensive how-to guide',
+        targetAudience: 'Business professionals'
       })),
       ...keywordOpportunities.map(k => ({
         title: this.createTitleFromKeyword(k.keyword),
         targetKeyword: k.keyword,
         metaDescription: `Everything you need to know about ${k.keyword} - practical advice and strategies`,
-        contentType: 'analysis' as const
+        seoKeywords: [k.keyword, `${k.keyword} analysis`, `${k.keyword} strategy`, `${k.keyword} trends`],
+        contentType: 'analysis',
+        contentAngle: 'Strategic analysis and insights',
+        targetAudience: 'Decision makers and analysts'
       }))
     ].slice(0, 8);
 
@@ -189,7 +195,7 @@ Return as JSON array: {"keywords": ["keyword1", "keyword2", ...]}
     }
   }
 
-  async writeBlogPost(topic: any, auditResults: AuditResultsType): Promise<BlogPost> {
+  async writeBlogPost(topic: BlogTopic, auditResults: AuditResultsType): Promise<BlogPost> {
     console.log('Generating blog post using template engine...');
     
     try {
@@ -448,22 +454,7 @@ export interface BlogStrategy {
   blogTopics: BlogTopic[];
 }
 
-export interface BlogTopic {
-  title: string;
-  targetKeyword: string;
-  metaDescription: string;
-  seoKeywords: string[];
-  contentType: string;
-  contentAngle: string;
-  targetAudience: string;
-  secondaryKeywords?: string[];
-  searchVolume?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  wordCount?: string;
-  outline?: string[];
-  seoGoal?: string;
-  estimatedRankingPotential?: string;
-}
+// BlogTopic interface is now imported from blog-template-engine
 
 export interface BlogPost {
   title: string;
