@@ -584,6 +584,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         )}
                         onApplyFix={handleApplyFix}
                         isApplying={applyingFix === `${resolution.issueType}-${index}`}
+                        makeUrlsClickable={makeUrlsClickable}
                       />
                     ))}
                   </CardContent>
@@ -929,7 +930,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
   );
 }
 
-function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplying }: any) {
+function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplying, makeUrlsClickable }: any) {
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
