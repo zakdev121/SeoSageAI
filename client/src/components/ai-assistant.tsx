@@ -16,6 +16,30 @@ interface AIAssistantProps {
   auditId: number;
 }
 
+// Helper function to convert URLs in text to clickable links
+const makeUrlsClickable = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 export function AIAssistant({ auditId }: AIAssistantProps) {
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [expandedResolution, setExpandedResolution] = useState<string | null>(null);
@@ -506,6 +530,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         )}
                         onApplyFix={handleApplyFix}
                         isApplying={applyingFix === `${resolution.issueType}-${index}`}
+                        makeUrlsClickable={makeUrlsClickable}
                       />
                     ))}
                   </CardContent>
@@ -532,6 +557,7 @@ export function AIAssistant({ auditId }: AIAssistantProps) {
                         )}
                         onApplyFix={handleApplyFix}
                         isApplying={applyingFix === `${resolution.issueType}-${index}`}
+                        makeUrlsClickable={makeUrlsClickable}
                       />
                     ))}
                   </CardContent>
@@ -912,7 +938,7 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <div>
               <h4 className="font-semibold">{resolution.issueType}</h4>
-              <p className="text-sm text-gray-600">{resolution.actionPlan?.overview}</p>
+              <p className="text-sm text-gray-600">{makeUrlsClickable(resolution.actionPlan?.overview || '')}</p>
               {resolution.affectedPages && resolution.affectedPages.length > 0 && (
                 <div className="mt-1">
                   <p className="text-xs text-gray-500 mb-1">Affected pages:</p>
@@ -952,7 +978,7 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
           <h5 className="font-semibold mb-2">Action Steps</h5>
           <ol className="list-decimal list-inside space-y-1">
             {resolution.actionPlan?.steps?.map((step: string, index: number) => (
-              <li key={index} className="text-sm">{step}</li>
+              <li key={index} className="text-sm">{makeUrlsClickable(step)}</li>
             ))}
           </ol>
         </div>
@@ -960,7 +986,7 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
         {resolution.actionPlan?.technicalDetails && (
           <div>
             <h5 className="font-semibold mb-2">Technical Details</h5>
-            <p className="text-sm text-gray-600">{resolution.actionPlan.technicalDetails}</p>
+            <p className="text-sm text-gray-600">{makeUrlsClickable(resolution.actionPlan.technicalDetails)}</p>
           </div>
         )}
         
