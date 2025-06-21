@@ -913,6 +913,30 @@ function ResolutionCard({ resolution, isExpanded, onToggle, onApplyFix, isApplyi
             <div>
               <h4 className="font-semibold">{resolution.issueType}</h4>
               <p className="text-sm text-gray-600">{resolution.actionPlan?.overview}</p>
+              {resolution.affectedPages && resolution.affectedPages.length > 0 && (
+                <div className="mt-1">
+                  <p className="text-xs text-gray-500 mb-1">Affected pages:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {resolution.affectedPages.slice(0, 3).map((pageUrl: string, index: number) => (
+                      <a
+                        key={index}
+                        href={pageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {pageUrl.length > 30 ? pageUrl.substring(0, 30) + '...' : pageUrl}
+                      </a>
+                    ))}
+                    {resolution.affectedPages.length > 3 && (
+                      <span className="text-xs text-gray-500">
+                        +{resolution.affectedPages.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
