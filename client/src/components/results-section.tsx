@@ -218,6 +218,16 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                         <div className="flex-1">
                           <p className="font-medium text-slate-900">{issue.type}</p>
                           <p className="text-sm text-slate-600">{issue.message}</p>
+                          {issue.page && (
+                            <a 
+                              href={issue.page} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                            >
+                              View Page: {issue.page.length > 50 ? issue.page.substring(0, 50) + '...' : issue.page}
+                            </a>
+                          )}
                         </div>
                         <Badge className={getSeverityColor(issue.severity)}>
                           {issue.severity}
@@ -279,7 +289,14 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                           <h4 className="font-semibold text-slate-900">{issue.type}</h4>
                           <p className="text-sm text-slate-600 mt-1">{issue.message}</p>
                           {issue.page && (
-                            <p className="text-xs text-slate-500 mt-1">Page: {issue.page}</p>
+                            <a 
+                              href={issue.page} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                            >
+                              View Page: {issue.page.length > 50 ? issue.page.substring(0, 50) + '...' : issue.page}
+                            </a>
                           )}
                         </div>
                         <Badge className={getSeverityColor(issue.severity)}>
@@ -566,7 +583,14 @@ export function ResultsSection({ auditId }: ResultsSectionProps) {
                             <h4 className="font-semibold text-slate-900">{issue.type}</h4>
                             <p className="text-sm text-slate-600 mt-1">{issue.message}</p>
                             {issue.page && (
-                              <p className="text-xs text-slate-500 mt-1">Page: {issue.page}</p>
+                              <a 
+                                href={issue.page} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                              >
+                                View Page: {issue.page.length > 50 ? issue.page.substring(0, 50) + '...' : issue.page}
+                              </a>
                             )}
                           </div>
                           <Badge className={getSeverityColor(issue.severity)}>
