@@ -1117,6 +1117,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get WordPress post ID for a specific page URL
+  app.get('/api/wp/get-post-id', async (req, res) => {
+    try {
+      const { url } = req.query;
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: 'URL parameter is required' });
+      }
+
+      const { WordPressService } = await import('./services/wordpress-api.js');
+      const wpService = new WordPressService('https://synviz.com');
+      
+      const { posts, pages } = await wpService.getAllContent();
+      const allContent = [...posts, ...pages];
+      
+      // Find the content that matches the URL
+      const matchingContent = allContent.find(content => {
+        const contentUrl = content.link || '';
+        return contentUrl.includes(url) || url.includes(content.slug);
+      });
+      
+      if (matchingContent) {
+        res.json({ 
+          postId: matchingContent.id,
+          slug: matchingContent.slug,
+          title: matchingContent.title?.rendered,
+          link: matchingContent.link
+        });
+      } else {
+        res.status(404).json({ error: 'WordPress post/page not found for the given URL' });
+      }
+    } catch (error) {
+      console.error('Error fetching WordPress post ID:', error);
+      res.status(500).json({ error: 'Failed to fetch WordPress post ID' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
