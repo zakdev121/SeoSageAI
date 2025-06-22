@@ -174,6 +174,7 @@ export const PageData = z.object({
   internalLinks: z.array(z.string()),
   externalLinks: z.array(z.string()),
   brokenLinks: z.array(z.string()),
+  wpPostId: z.number().nullable().optional(), // WordPress post/page ID for API updates
 });
 
 export const GSCData = z.object({

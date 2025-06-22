@@ -171,7 +171,8 @@ export class WordPressService {
         images: this.extractImages(content.content?.rendered || ''),
         internalLinks: this.extractInternalLinks(content.content?.rendered || ''),
         externalLinks: this.extractExternalLinks(content.content?.rendered || ''),
-        brokenLinks: [] // Would need additional checking
+        brokenLinks: [], // Would need additional checking
+        wpPostId: content.id // WordPress post/page ID for API updates
       }));
     } catch (error) {
       console.error('Error converting WordPress content to page data:', error);
